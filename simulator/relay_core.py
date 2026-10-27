@@ -144,8 +144,12 @@ class RelayCoreConfig:
         sos_delay_max_ms: float = 80.0,
         max_rate_per_min: int = 20,
         dedupe_cache_size: int = 2048,
+        enable_dedupe: bool = True,
     ):
         self.enable_suppression = enable_suppression
+        # Dedupe is what separates a usable flood from a broadcast storm.
+        # It is only ever turned off to measure that difference.
+        self.enable_dedupe = enable_dedupe
         self.k_heartbeat = k_heartbeat
         self.k_lowbat = k_lowbat
         self.k_sos = k_sos
@@ -221,7 +225,7 @@ class RelayCore:
             return None
 
         # 3. Deduplication check
-        if self.dedupe_cache.has_seen(hdr.node_id, hdr.seq):
+        if self.config.enable_dedupe and self.dedupe_cache.has_seen(hdr.node_id, hdr.seq):
             self.stats["dedupe_dropped"] += 1
             return None
 

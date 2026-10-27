@@ -1,25 +1,34 @@
 {
   "relay_strategies": {
-    "Plain Flooding": {
-      "total_tx": 94,
-      "sos_delivered": 1,
-      "dedupe_drops": 272,
-      "suppression_drops": 0,
-      "tx_per_delivered": 94.0
+    "Plain Flooding (no dedupe)": {
+      "seeds": 25,
+      "tx_mean": 301.2,
+      "tx_sd": 64.8,
+      "delivery_rate": 1.0,
+      "delivered_seeds": 25,
+      "dedupe_mean": 0,
+      "suppression_mean": 0,
+      "budget_hit_seeds": 0
     },
-    "TTL Only (Dedupe)": {
-      "total_tx": 94,
-      "sos_delivered": 1,
-      "dedupe_drops": 272,
-      "suppression_drops": 0,
-      "tx_per_delivered": 94.0
+    "Dedupe Only": {
+      "seeds": 25,
+      "tx_mean": 94.6,
+      "tx_sd": 33.0,
+      "delivery_rate": 0.92,
+      "delivered_seeds": 23,
+      "dedupe_mean": 238.1,
+      "suppression_mean": 0,
+      "budget_hit_seeds": 0
     },
-    "Counter Suppression (k=2)": {
-      "total_tx": 63,
-      "sos_delivered": 1,
-      "dedupe_drops": 151,
-      "suppression_drops": 32,
-      "tx_per_delivered": 63.0
+    "Dedupe + Counter Suppression (k=2)": {
+      "seeds": 25,
+      "tx_mean": 66.4,
+      "tx_sd": 24.4,
+      "delivery_rate": 0.92,
+      "delivered_seeds": 23,
+      "dedupe_mean": 138.3,
+      "suppression_mean": 27.8,
+      "budget_hit_seeds": 0
     }
   },
   "silence_scenarios": [
@@ -86,29 +95,47 @@
     {
       "node_count": 50,
       "area_m": 565.7,
-      "sos_delivered": 1,
-      "total_transmissions": 607,
-      "avg_latency_ms": 5.0,
-      "dedupe_drops": 1623,
-      "suppression_drops": 427
+      "seeds": 25,
+      "delivery_rate": 0.8,
+      "delivered_seeds": 20,
+      "tx_mean": 585.9,
+      "tx_sd": 60.1,
+      "latency_ms_mean": 126.7,
+      "latency_ms_sd": 151.0,
+      "dedupe_mean": 1376.0,
+      "hops_median": 2,
+      "hops_max": 9,
+      "unreachable_seeds": 4
     },
     {
       "node_count": 100,
       "area_m": 800.0,
-      "sos_delivered": 1,
-      "total_transmissions": 1266,
-      "avg_latency_ms": 429.1,
-      "dedupe_drops": 2954,
-      "suppression_drops": 671
+      "seeds": 25,
+      "delivery_rate": 0.64,
+      "delivered_seeds": 16,
+      "tx_mean": 1293.0,
+      "tx_sd": 104.6,
+      "latency_ms_mean": 224.3,
+      "latency_ms_sd": 150.6,
+      "dedupe_mean": 3030.4,
+      "hops_median": 5,
+      "hops_max": 9,
+      "unreachable_seeds": 2
     },
     {
       "node_count": 200,
       "area_m": 1131.4,
-      "sos_delivered": 0,
-      "total_transmissions": 2474,
-      "avg_latency_ms": 0.0,
-      "dedupe_drops": 5588,
-      "suppression_drops": 1446
+      "seeds": 25,
+      "delivery_rate": 0.48,
+      "delivered_seeds": 12,
+      "tx_mean": 2665.6,
+      "tx_sd": 187.3,
+      "latency_ms_mean": 246.2,
+      "latency_ms_sd": 146.0,
+      "dedupe_mean": 6449.2,
+      "hops_median": 7.0,
+      "hops_max": 34,
+      "unreachable_seeds": 1
     }
   ]
 }

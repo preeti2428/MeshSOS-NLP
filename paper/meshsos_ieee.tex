@@ -545,20 +545,24 @@ is, however, strictly better than the raw text our fallback path sends, and
 compressing that path would shrink the 23\% of messages taking it.
 
 \subsection{Network effect}
-Three conditions, 60 trials per cell pairing seed and message round-robin,
-TTL~8, 3\% per-frame loss: \textbf{A} full text, \textbf{B} always compressed,
-\textbf{C} compressed when confident.
+Three conditions, \textbf{500 paired trials per cell} pairing seed and message
+round-robin, TTL~8, 3\% per-frame loss: \textbf{A} full text, \textbf{B}
+always compressed, \textbf{C} compressed when confident. All three conditions
+see the same topology and the same message in every trial, so the design is
+paired and the arms are compared with an exact McNemar test on the discordant
+trials. Intervals are 95\% Wilson score intervals, which stay inside $[0,1]$
+at the rates observed here where the normal approximation does not.
 
 \begin{table}[htbp]
-\caption{SOS delivered to a gateway}
+\caption{SOS delivered to a gateway, 500 paired trials per cell}
 \begin{center}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrrcr}
 \toprule
-\textbf{Nodes} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{Airtime saved (C)} \\
+\textbf{Nodes} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{95\% CI (C)} & \textbf{Airtime (C)} \\
 \midrule
-50  & 80.0\% & 88.3\% & 86.7\% & 15.7\% \\
-100 & 76.7\% & 85.0\% & 80.0\% & 12.0\% \\
-200 & 53.3\% & 60.0\% & 60.0\% &  8.5\% \\
+50  & 84.6\% & 91.2\% & 88.8\% & [85.7, 91.3] & 13.7\% \\
+100  & 72.8\% & 82.6\% & 79.8\% & [76.1, 83.1] & 10.6\% \\
+200  & 54.8\% & 63.8\% & 61.2\% & [56.9, 65.4] & 7.2\% \\
 \bottomrule
 \end{tabular}
 \label{tab:network}
@@ -567,17 +571,32 @@ TTL~8, 3\% per-frame loss: \textbf{A} full text, \textbf{B} always compressed,
 
 \begin{figure}[htbp]
 \centerline{\includegraphics[width=\columnwidth]{figures/fig_delivery.pdf}}
-\caption{SOS reports reaching a gateway, by condition and network size. The
-margin widens as the mesh loads: compression buys the most where contention
-is highest.}
+\caption{SOS reports reaching a gateway, by condition and network size, with
+95\% Wilson intervals. The margin widens as the mesh loads: compression buys
+the most where contention is highest.}
 \label{fig:delivery}
 \end{figure}
 
-The gain is largest at 200 nodes, where the mesh is most loaded. \textbf{C is
-the shipping configuration and the number to quote}; B assumes the encoder is
-never unsure, which is false 23\% of the time. A separate sweep separates
-TTL-limited from size-limited failure: where TTL is too low for the topology,
-both short and long messages fail and compression cannot help.
+Every A-versus-C difference is significant at $p < 0.001$. At 200 nodes the
+paired counts are 34 trials where C delivered and A did not against 2 the
+other way; at 100 nodes, 37 against 2; at 50 nodes, 22 against 1. The relative
+gain grows with load --- $+5.0\%$, $+9.6\%$, $+11.7\%$ at 50, 100 and 200
+nodes --- which is the expected direction if the mechanism is contention
+rather than anything particular to the payload.
+
+An earlier version of this evaluation used 60 trials per cell. At that size
+the 95\% interval on a rate near 0.8 is roughly $\pm 10$ percentage points,
+wide enough to contain every effect reported here, and the apparent ordering
+of the arms moved between runs. The numbers above supersede it.
+
+\textbf{C is the shipping configuration and the number to quote}; B assumes
+the encoder is never unsure, which is false for 28\% of these messages. B
+beats C significantly at every size ($p < 0.002$), and that gap is precisely
+the cost of the fallback --- an honest encoder that refuses to guess gives up
+part of the gain, and we report the part it gives up rather than quoting the
+ceiling. A separate sweep separates TTL-limited from size-limited failure:
+where TTL is too low for the topology, both short and long messages fail and
+compression cannot help.
 
 \section{Discussion}
 

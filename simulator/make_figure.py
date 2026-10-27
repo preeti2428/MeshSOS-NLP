@@ -5,7 +5,9 @@ Reads simulator/compression_results.json (written by eval_compression.py)
 and renders a grouped bar chart to figures/.
 
 Palette is CVD-validated. Every bar carries its value as a direct label, so
-identity never rests on colour alone.
+identity never rests on colour alone. Error bars are 95% Wilson score
+intervals; without them a reader cannot tell a real gain from noise, which
+was the single clearest weakness of the earlier version of this figure.
 """
 
 from __future__ import annotations
@@ -48,16 +50,22 @@ def main() -> int:
 
     for i, cond in enumerate(conds):
         vals = [data[str(n)][cond]["rate"] * 100 for n in node_counts]
+        lo = [vals[j] - data[str(n)][cond]["ci_low"] * 100
+              for j, n in enumerate(node_counts)]
+        hi = [data[str(n)][cond]["ci_high"] * 100 - vals[j]
+              for j, n in enumerate(node_counts)]
         offset = (i - 1) * (width + 0.015)   # 2 px-ish gap between bars
         bars = ax.bar(
             x + offset, vals, width,
             label=LABELS[cond], color=COLORS[cond],
             edgecolor="white", linewidth=1.2, zorder=3,
+            yerr=[lo, hi], capsize=3,
+            error_kw=dict(ecolor=INK, elinewidth=1.0, capthick=1.0, zorder=5),
         )
-        for b, v in zip(bars, vals):
+        for b, v, h in zip(bars, vals, hi):
             ax.text(
-                b.get_x() + b.get_width() / 2, v + 1.4, f"{v:.0f}",
-                ha="center", va="bottom", fontsize=9, color=INK, zorder=4,
+                b.get_x() + b.get_width() / 2, v + h + 1.6, f"{v:.0f}",
+                ha="center", va="bottom", fontsize=9, color=INK, zorder=6,
             )
 
     ax.set_xticks(x)
@@ -74,16 +82,31 @@ def main() -> int:
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(GRID)
 
-    trials = data[str(node_counts[0])]["A"]["trials"]
+    trials = data[str(node_counts[0])]["trials"]
     ax.set_title(
         "Compression raises SOS delivery most where the mesh is most loaded",
         fontsize=11.5, color=INK, loc="left", pad=14, weight="bold",
     )
     ax.text(
         0, 1.015,
-        f"{trials} trials per bar · TTL 8 · 3% per-frame loss · 27 B advertising frame",
+        f"{trials} paired trials per bar · 95% Wilson intervals · "
+        f"TTL 8 · 3% per-frame loss · 27 B advertising frame",
         transform=ax.transAxes, fontsize=8.5, color=MUTED, va="bottom",
     )
+
+    # All three A-vs-C differences are significant at the same level, so a
+    # single line states it once instead of stamping three identical
+    # asterisks over the bars.
+    ps = [data[str(n)].get("mcnemar_AC", {}).get("p_value") for n in node_counts]
+    ps = [p for p in ps if p is not None]
+    if ps:
+        worst = max(ps)
+        claim = ("all A vs C differences p < 0.001" if worst < 0.001
+                 else f"A vs C differences p < {worst:.3g}")
+        ax.text(
+            0, -0.135, f"{claim} (exact McNemar, paired on seed and message)",
+            transform=ax.transAxes, fontsize=8.5, color=MUTED, va="top",
+        )
 
     leg = ax.legend(
         frameon=False, fontsize=9, loc="upper right",

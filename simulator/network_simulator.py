@@ -131,6 +131,7 @@ class NetworkSimulator:
         model_fragmentation: bool = True,
         model_collisions: bool = True,
         adv_payload_bytes: int = ADV_USABLE_PAYLOAD_BYTES,
+        max_transmissions: Optional[int] = None,
     ):
         """
         size_aware_airtime: derive channel occupancy from the real serialized
@@ -155,6 +156,8 @@ class NetworkSimulator:
 
         # Per-receiver busy windows, for the collision model:
         # receiver_id -> list of (start_time, end_time, reception_id)
+        self.max_transmissions: Optional[int] = max_transmissions
+        self.transmission_budget_exhausted = False
         self._rx_busy: Dict[int, List[Tuple[float, float, int]]] = {}
         self._collided_receptions: Set[int] = set()
         self._next_reception_id: int = 0
@@ -251,6 +254,15 @@ class NetworkSimulator:
         return True
 
     def broadcast_packet(self, sender: SimNode, message: MeshMessage, air_time_ms: Optional[float] = None):
+        # A flood with deduplication turned off does not terminate at any
+        # useful scale, which is the whole point of measuring it. The budget
+        # lets the run finish and records that the ceiling was reached, so
+        # the storm shows up as a number instead of a hang.
+        if self.max_transmissions is not None and \
+                self.metrics.total_transmissions >= self.max_transmissions:
+            self.transmission_budget_exhausted = True
+            return
+
         payload_bytes = self.message_size_bytes(message)
         fragments = self.fragment_count(payload_bytes)
 
