@@ -43,6 +43,7 @@ Run:  python nlp/derived_gold.py
 from __future__ import annotations
 
 import csv
+import hashlib
 import re
 import sys
 import unicodedata
@@ -169,7 +170,10 @@ def load() -> list[dict]:
         if not fe:
             continue
         cat, haz = derive(fe)
-        rows.append({"text": t, "gold_cat": cat, "gold_haz": haz})
+        # Split on a hash of the text, so the halves are stable across runs
+        # and independent of corpus order. Tune on dev, report on test.
+        half = "dev" if hashlib.sha1(t.encode()).digest()[0] % 2 else "test"
+        rows.append({"text": t, "gold_cat": cat, "gold_haz": haz, "split": half})
     return rows
 
 
@@ -181,8 +185,15 @@ def prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
 
 
 def main() -> int:
+    want = "all"
+    for a in sys.argv[1:]:
+        if a in ("dev", "test", "all"):
+            want = a
     rows = load()
+    if want != "all":
+        rows = [r for r in rows if r["split"] == want]
     enc = RuleEncoder()
+    print(f"  [split: {want}]")
 
     print("=" * 76)
     print("ENCODER vs GOLD LABELS DERIVED FROM FIGURE EIGHT'S HUMAN ANNOTATIONS")
@@ -223,6 +234,22 @@ def main() -> int:
     print("  " + "-" * 45)
     print(f"  {'overall':<20}{n:>7}{100*correct/n:>17.1f}%")
     print(f"  compressed (did not fall back): {100*compressed/n:.1f}%")
+
+    # The number that actually matters. Refusing everything scores 100% here
+    # on an empty set, and compressing everything scores the overall rate, so
+    # read it together with the compression rate above: the goal is to raise
+    # coverage without dropping the accuracy of what gets through.
+    sel_hit = sel_n = 0
+    for r in emergencies:
+        res = enc.encode(r["text"])
+        if res.should_compress:
+            sel_n += 1
+            sel_hit += Category(res.envelope.category).name == r["gold_cat"]
+    if sel_n:
+        print(f"  OF WHAT IT COMPRESSED, correct: {100*sel_hit/sel_n:.1f}%  "
+              f"({sel_hit}/{sel_n})")
+    else:
+        print(f"  OF WHAT IT COMPRESSED, correct: n/a (it compressed nothing)")
 
     # ---- the safety property, on messages their annotators called unrelated ----
     if non_emergencies:

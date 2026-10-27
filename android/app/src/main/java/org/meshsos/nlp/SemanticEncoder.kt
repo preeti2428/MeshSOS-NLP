@@ -146,15 +146,28 @@ class SemanticEncoder(private val threshold: Float = DEFAULT_THRESHOLD) {
     ): Pair<Float, List<String>> {
         val reasons = mutableListOf<String>()
 
-        val filled = listOf(
-            category != Category.OTHER,
+        val extras = listOf(
             casualty > 0,
             mobility != Mobility.UNKNOWN,
             hazards != 0,
             severity != Severity.UNKNOWN,
         ).count { it }
-        var s = filled / 5.0f
-        reasons += "$filled/5 fields recovered"
+
+        // Confidence asks "did I understand what this message says", not
+        // "did I fill all five slots". Scoring filled/5 treats a complete
+        // short report as four fifths missing; measured on 10,398 real
+        // disaster messages that refused all but 0.2% of them, because
+        // 92.8% of real messages carry one field or none -- people write
+        // one thing at a time ("we need water", "my house fell"). Those
+        // are not partial reports. Keep this in step with nlp/rules.py.
+        var s: Float
+        if (category != Category.OTHER) {
+            s = 0.50f + 0.10f * extras
+            reasons += "category recognised, $extras supporting field(s)"
+        } else {
+            s = 0.12f * extras
+            reasons += "no category matched, $extras other field(s)"
+        }
 
         val tokens = Regex("[a-z0-9']+").findAll(text).map { it.value }.filter { it.length > 2 }.toSet()
         val covered = matched.flatMap { Regex("[a-z0-9']+").findAll(it).map { m -> m.value }.toList() }.toSet()
@@ -168,9 +181,6 @@ class SemanticEncoder(private val threshold: Float = DEFAULT_THRESHOLD) {
         }
         if (UNCERTAINTY_TERMS.any { text.contains(it) }) {
             s *= 0.8f; reasons += "writer signalled uncertainty"
-        }
-        if (category == Category.OTHER) {
-            s *= 0.5f; reasons += "no category matched"
         }
         if (tokens.size <= 2) {
             s *= 0.7f; reasons += "message too short to judge"

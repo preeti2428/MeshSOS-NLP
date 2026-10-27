@@ -312,15 +312,34 @@ class RuleEncoder:
     ) -> Tuple[float, float, List[str]]:
         reasons: List[str] = []
 
-        filled = sum([
-            category != Category.OTHER,
+        extras = sum([
             casualty > 0,
             mobility != Mobility.UNKNOWN,
             hazards != 0,
             severity != Severity.UNKNOWN,
         ])
-        score = filled / 5.0
-        reasons.append(f"{filled}/5 fields recovered")
+
+        # Confidence asks "did I understand what this message says", not
+        # "did I fill all five slots". The earlier version scored
+        # filled/5, which treats a complete short report as four fifths
+        # missing. On 10,398 real disaster messages that refused all but
+        # 0.2% of them: 92.8% of real messages let the encoder recover one
+        # field or none, because people write one thing at a time --
+        # "we need water", "my house fell". Those are not partial reports.
+        #
+        # So the category carries the score: naming the emergency is the
+        # part a rescuer acts on, and corroborating detail raises
+        # confidence from there rather than being required for it.
+        if category != Category.OTHER:
+            score = 0.50 + 0.10 * extras
+            reasons.append(f"category recognised, {extras} supporting field(s)")
+        else:
+            # No category matched. Detail alone can still describe
+            # something real ("3 people, one unconscious"), but without
+            # knowing what happened it stays below the threshold unless
+            # nearly everything else is present.
+            score = 0.12 * extras
+            reasons.append(f"no category matched, {extras} other field(s)")
 
         # How much of the text did the lexicons actually account for?
         tokens = [t for t in re.findall(r"[a-z0-9']+", text) if len(t) > 2]
@@ -340,10 +359,6 @@ class RuleEncoder:
         if any(u in text for u in UNCERTAINTY_TERMS):
             score *= 0.8
             reasons.append("writer signalled uncertainty")
-
-        if category == Category.OTHER:
-            score *= 0.5
-            reasons.append("no category matched")
 
         if len(tokens) <= 2:
             score *= 0.7
