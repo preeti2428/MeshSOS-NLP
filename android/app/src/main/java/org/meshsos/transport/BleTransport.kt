@@ -99,6 +99,7 @@ class BleTransport(
         @Volatile var advertising: Boolean = false
         @Volatile var scanning: Boolean = false
         @Volatile var lastError: String? = null
+        @Volatile var scanError: String? = null
         @Volatile var sent: Int = 0
         @Volatile var received: Int = 0
         @Volatile var lastSentBytes: Int = 0
@@ -109,6 +110,9 @@ class BleTransport(
             if (!bluetoothOn) return "Bluetooth is off"
             if (!advertiserReady) return "This phone cannot advertise over BLE"
             if (err != null) return "Radio: $err"
+            val serr = scanError
+            if (serr != null) return "Cannot hear: $serr"
+            if (!scanning) return "Not scanning yet"
             if (!advertising && sent == 0) return "Radio ready, nothing sent yet"
             return "Sent $sent · heard $received · $peers peer" +
                 (if (peers == 1) "" else "s") +
@@ -197,8 +201,12 @@ class BleTransport(
             isScanning = true
             Status.scanning = true
         } catch (e: SecurityException) {
-            // Lacking BLUETOOTH_SCAN runtime permission
-        } catch (e: Exception) {}
+            Status.scanning = false
+            Status.scanError = "Nearby devices permission not granted (scan)"
+        } catch (e: Exception) {
+            Status.scanning = false
+            Status.scanError = "scan failed: ${e.javaClass.simpleName}"
+        }
     }
 
     private fun stopScanning() {
@@ -218,7 +226,22 @@ class BleTransport(
             result?.let { processScanResult(it) }
         }
 
-        override fun onScanFailed(errorCode: Int) {}
+        override fun onScanFailed(errorCode: Int) {
+            // Was empty. A scan that never starts looks exactly like a
+            // mesh with nobody in it, which is the hardest failure to
+            // diagnose in the field.
+            Status.scanning = false
+            Status.scanError = when (errorCode) {
+                SCAN_FAILED_ALREADY_STARTED -> "scan already running"
+                SCAN_FAILED_APPLICATION_REGISTRATION_FAILED ->
+                    "scan registration failed, restart the app"
+                SCAN_FAILED_FEATURE_UNSUPPORTED ->
+                    "this phone cannot scan for BLE advertisements"
+                SCAN_FAILED_INTERNAL_ERROR ->
+                    "Bluetooth internal error, toggle Bluetooth off and on"
+                else -> "scan failed, code $errorCode"
+            }
+        }
     }
 
     private fun processScanResult(result: ScanResult) {
