@@ -70,7 +70,10 @@ data class CompactSosMessage(
     }
 
     fun verify(sharedKey: ByteArray): Boolean =
-        computeTag(sharedKey).contentEquals(authTag)
+        // Constant-time compare. The broadcast medium offers no practical
+        // timing oracle, but MessageDigest.isEqual costs nothing over
+        // contentEquals and removes the question entirely.
+        java.security.MessageDigest.isEqual(computeTag(sharedKey), authTag)
 
     override fun toBytes(): ByteArray {
         val out = unauthenticatedBytes() + authTag

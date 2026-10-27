@@ -369,6 +369,39 @@ coordinates do not fit, since longitude 77.209 at $0.001^\circ$ resolution is
 77{,}209, past the 32{,}767 ceiling of a signed 16-bit field. Both SOS layouts
 share the message type; the version byte distinguishes them.
 
+\subsection{Threat model}
+Four bytes of authentication invites an immediate objection, so we state
+precisely what the tag defends, against whom, and what it knowingly does not.
+The asset is the integrity of the rescuer's view: a forged SOS moves rescuers
+to an empty field. Confidentiality is deliberately absent --- an encrypted cry
+for help trades availability in exactly the wrong place --- so anyone in radio
+range learns that grid cell $(x,y)$ reported trouble; we state this privacy
+cost rather than hide it.
+
+The adversary transmits and receives freely but holds no key. Blind forgery
+succeeds per attempt with probability $2^{-32}$; under the airtime model of
+Section~III a 25-byte frame occupies 430\,\textmu s, bounding one channel at
+${\sim}2{,}300$ attempts/s, so even an attacker saturating the channel --- a
+visible denial of service in itself --- expects a first forgery after
+$2^{32}/2300 \approx 21$ days of continuous transmission, and the gateway can
+rate-limit verification failures per node id. Replay is bounded because the
+tag covers \texttt{node\_id}, \texttt{seq} and \texttt{timestamp} (only TTL
+is zeroed), and both relays and gateway deduplicate on
+(\texttt{node\_id}, \texttt{seq}).
+
+Two honest weaknesses remain. The prototype uses a single group key, so one
+captured device forges any identity; the deployment design derives
+$K_{node} = \mathrm{KDF}(K_{master}, \mathit{node\_id})$ at enrolment, at
+zero byte cost, after which a compromise forges only itself. And relays,
+holding no key, amplify injected frames with fresh sequence numbers;
+suppression ($k{=}2$) and TTL bound the amplification, a per-node token
+bucket at relays is designed but unimplemented, and an attacker with a
+transmitter could in any case jam the band outright. Tag comparison is
+constant-time at both endpoints. The clearest upgrade is CuMAC-style
+accumulation (Section~II): rotate four segments of a 16-byte tag across the
+store-and-forward re-broadcasts the system already performs, reaching 128-bit
+strength over repeats at zero bytes per frame.
+
 \subsection{The encoder}
 The deployed encoder is rule-based: lexicon matching over category, casualty,
 mobility, hazard and severity terms, with numeric extraction that binds a count

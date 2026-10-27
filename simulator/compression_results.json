@@ -1,30 +1,119 @@
 {
   "50": {
+    "trials": 20,
     "A": {
-      "rate": 0.8,
-      "frames": 749.0666666666667,
-      "airtime": 0.3242186666666643,
-      "compact_pct": 0.0,
-      "trials": 60
+      "rate": 0.75,
+      "ci_low": 0.5312991223284828,
+      "ci_high": 0.8881382986133887,
+      "delivered": 15,
+      "frames": 732.7,
+      "airtime": 0.31723939999999773,
+      "outcomes": [
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ]
     },
     "B": {
-      "rate": 0.8833333333333333,
-      "frames": 604.2166666666667,
-      "airtime": 0.261511433333331,
-      "compact_pct": 100.0,
-      "trials": 60
+      "rate": 0.8,
+      "ci_low": 0.5839825676933227,
+      "ci_high": 0.9193423374369231,
+      "delivered": 16,
+      "frames": 589.45,
+      "airtime": 0.2551030999999977,
+      "outcomes": [
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0
+      ]
     },
     "C": {
-      "rate": 0.8666666666666667,
-      "frames": 631.6666666666666,
-      "airtime": 0.2732966666666643,
-      "compact_pct": 76.66666666666667,
-      "trials": 60
+      "rate": 0.8,
+      "ci_low": 0.5839825676933227,
+      "ci_high": 0.9193423374369231,
+      "delivered": 16,
+      "frames": 594.15,
+      "airtime": 0.2571348999999977,
+      "outcomes": [
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "compact_pct": 90.0
     },
-    "delivery_gain_B": 10.416666666666652,
-    "delivery_gain_C": 8.333333333333325,
-    "airtime_saved_C": 15.706066687503206,
-    "frames_saved_C": 15.672837308650777
+    "mcnemar_AB": {
+      "b": 0,
+      "c": 1,
+      "discordant": 1,
+      "p_value": 1.0
+    },
+    "mcnemar_AC": {
+      "b": 0,
+      "c": 1,
+      "discordant": 1,
+      "p_value": 1.0
+    },
+    "mcnemar_BC": {
+      "b": 0,
+      "c": 0,
+      "discordant": 0,
+      "p_value": 1.0
+    },
+    "delivery_gain_B": 6.666666666666665,
+    "delivery_gain_C": 6.666666666666665,
+    "airtime_saved_C": 18.946101902853318,
+    "frames_saved_C": 18.909512761020885
   },
   "100": {
     "A": {
@@ -55,29 +144,29 @@
   },
   "200": {
     "A": {
-      "rate": 0.5333333333333333,
-      "frames": 3036.516666666667,
-      "airtime": 1.3157731000000048,
+      "rate": 0.6,
+      "frames": 2824.6,
+      "airtime": 1.2252788000000172,
       "compact_pct": 0.0,
-      "trials": 60
+      "trials": 5
     },
     "B": {
       "rate": 0.6,
-      "frames": 2698.383333333333,
-      "airtime": 1.1700669666666919,
+      "frames": 2605.6,
+      "airtime": 1.129611200000031,
       "compact_pct": 100.0,
-      "trials": 60
+      "trials": 5
     },
     "C": {
       "rate": 0.6,
-      "frames": 2778.4,
-      "airtime": 1.2043182666666867,
-      "compact_pct": 76.66666666666667,
-      "trials": 60
+      "frames": 2605.6,
+      "airtime": 1.129611200000031,
+      "compact_pct": 100.0,
+      "trials": 5
     },
-    "delivery_gain_B": 12.5,
-    "delivery_gain_C": 12.5,
-    "airtime_saved_C": 8.470672742383744,
-    "frames_saved_C": 8.500419889017575
+    "delivery_gain_B": 0.0,
+    "delivery_gain_C": 0.0,
+    "airtime_saved_C": 7.807823003220571,
+    "frames_saved_C": 7.753310203214614
   }
 }
