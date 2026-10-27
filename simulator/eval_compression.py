@@ -32,7 +32,20 @@ things are now reported instead.
 Both are computed from the standard library, so the script has no new
 dependency.
 
-Run:  python simulator/eval_compression.py [trials] [node_count ...]
+MESSAGE SOURCE
+--------------
+By default the 25 hand-written samples. Those were written by us and
+state several fields each, so condition C compresses 72% of them. On
+real disaster text the encoder compresses 13.6% (see nlp/derived_gold.py),
+and condition C's advantage scales with that rate -- so the default run
+measures the mechanism under favourable traffic, not the traffic a
+deployment would see.
+
+Pass `real` to draw messages from the held-out half of the Figure Eight
+corpus instead. That is the number to quote for expected field
+behaviour; the sample run is the mechanism's ceiling.
+
+Run:  python simulator/eval_compression.py [trials] [real] [node_count ...]
 """
 
 from __future__ import annotations
@@ -158,13 +171,37 @@ def run_one(n: int, seed: int, condition: str, text: str, encoder: RuleEncoder) 
 
 def main() -> int:
     args = sys.argv[1:]
+    use_real = "real" in args
+    args = [a for a in args if a != "real"]
     trials = int(args[0]) if args else 500
     wanted = [int(a) for a in args[1:]] or list(NODE_COUNTS)
 
     encoder = RuleEncoder()
-    texts = [t for t, _ in SAMPLES]
+    if use_real:
+        import hashlib, re as _re, unicodedata as _ud, csv as _csv
+        _csv.field_size_limit(10 ** 7)
+        corpus = Path(__file__).resolve().parent.parent / "data" / "raw" / "disaster_messages.csv"
+        if not corpus.exists():
+            sys.exit("run nlp/build_annotation_set.py first to fetch the corpus")
+        texts, seen = [], set()
+        with open(corpus, encoding="utf-8") as fh:
+            for row in _csv.DictReader(fh):
+                if row["genre"] != "direct":
+                    continue
+                t = _re.sub(r"\s+", " ", _ud.normalize("NFKC", row["message"] or "")).strip()
+                if len(t) < 15 or _re.match(r"^\s*NOTES?\s*:", t, _re.I) or t.lower() in seen:
+                    continue
+                seen.add(t.lower())
+                # the same held-out half nlp/derived_gold.py reports on
+                if hashlib.sha1(t.encode()).digest()[0] % 2 == 0:
+                    texts.append(t)
+        print(f"  message source: {len(texts)} held-out real messages")
+    else:
+        texts = [t for t, _ in SAMPLES]
+        print(f"  message source: {len(texts)} hand-written samples (the ceiling)")
 
-    out_path = Path(__file__).resolve().parent / "compression_results.json"
+    name = "compression_results_real.json" if use_real else "compression_results.json"
+    out_path = Path(__file__).resolve().parent / name
     results = json.loads(out_path.read_text()) if out_path.exists() else {}
 
     print("=" * 78)

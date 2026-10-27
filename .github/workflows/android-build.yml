@@ -7,6 +7,9 @@ on:
     branches: [ "master", "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Debug APK
@@ -42,3 +45,20 @@ jobs:
           name: MeshSOS-Debug-APK
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      # A workflow artifact is a zip behind a GitHub login, which is no use
+      # when the APK has to reach a dozen handsets. This keeps one rolling
+      # pre-release whose download link is public and stable, so the same
+      # URL always serves the current build.
+      - name: Publish rolling pre-release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -1)
+          cp "$APK" MeshSOS-latest.apk
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest MeshSOS-latest.apk \
+            --title "MeshSOS latest debug build" \
+            --prerelease \
+            --notes "Debug build of ${{ github.sha }}. Install on Android 8 or newer and allow install from unknown sources. Not signed for distribution."
