@@ -68,7 +68,7 @@ def test_suppression_reduces_transmissions_vs_flooding():
     """
     seed = 42
 
-    def run_mesh_scenario(enable_suppression: bool, k_val: int) -> SimulationMetrics:
+    def run_mesh_scenario(enable_suppression: bool, k_val: int, seed: int) -> SimulationMetrics:
         sim = NetworkSimulator(width=300, height=300, packet_loss_rate=0.02, seed=seed)
         cfg = RelayCoreConfig(
             enable_suppression=enable_suppression,
@@ -102,16 +102,36 @@ def test_suppression_reduces_transmissions_vs_flooding():
         sim.run_until(4.0)
         return sim.metrics
 
-    metrics_flooding = run_mesh_scenario(enable_suppression=False, k_val=0)
-    metrics_suppressed = run_mesh_scenario(enable_suppression=True, k_val=2)
+    # Averaged over seeds, not asserted on one.
+    #
+    # Since the simulator became size-aware, a multi-frame SOS loses a frame
+    # roughly 1 - (1-p)^n of the time instead of p, so delivery in a sparse
+    # 5x5 grid is no longer certain on every layout. Suppression delivers on
+    # about 29 of 30 seeds here. Asserting on a single seed made this test a
+    # coin flip - the same single-seed fragility that made the old 200-node
+    # "0 delivered" figure misleading.
+    SEEDS = 10
 
-    assert metrics_flooding.total_sos_delivered_to_gateway >= 1
-    assert metrics_suppressed.total_sos_delivered_to_gateway >= 1
+    flooding = [run_mesh_scenario(False, 0, s) for s in range(SEEDS)]
+    suppressed = [run_mesh_scenario(True, 2, s) for s in range(SEEDS)]
 
-    # Counter-based suppression must noticeably reduce transmissions
-    tx_flood = metrics_flooding.total_transmissions
-    tx_suppressed = metrics_suppressed.total_transmissions
+    flood_delivered = sum(m.total_sos_delivered_to_gateway >= 1 for m in flooding)
+    supp_delivered = sum(m.total_sos_delivered_to_gateway >= 1 for m in suppressed)
 
-    assert tx_suppressed < tx_flood, f"Suppressed TX ({tx_suppressed}) must be less than Flooding TX ({tx_flood})"
+    assert flood_delivered == SEEDS, (
+        f"flooding should reach the gateway on every layout, got {flood_delivered}/{SEEDS}"
+    )
+    assert supp_delivered >= SEEDS - 1, (
+        f"suppression lost too much delivery: {supp_delivered}/{SEEDS}"
+    )
+
+    tx_flood = sum(m.total_transmissions for m in flooding) / SEEDS
+    tx_suppressed = sum(m.total_transmissions for m in suppressed) / SEEDS
+
+    assert tx_suppressed < tx_flood, (
+        f"Suppressed TX ({tx_suppressed:.1f}) must be less than Flooding TX ({tx_flood:.1f})"
+    )
     reduction_pct = ((tx_flood - tx_suppressed) / tx_flood) * 100.0
-    print(f"\n[Phase 1 Eval] Flooding TX: {tx_flood}, Suppressed TX: {tx_suppressed}, Reduction: {reduction_pct:.1f}%")
+    print(f"\n[Phase 1 Eval] over {SEEDS} seeds — Flooding TX: {tx_flood:.1f}, "
+          f"Suppressed TX: {tx_suppressed:.1f}, Reduction: {reduction_pct:.1f}%, "
+          f"delivery {supp_delivered}/{SEEDS} vs {flood_delivered}/{SEEDS}")

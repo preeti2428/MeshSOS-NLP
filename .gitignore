@@ -3,3 +3,5 @@ models/*.tflite
 __pycache__/
 *.pyc
 .venv/
+# NLP / compression artefacts
+figures/*.pdf

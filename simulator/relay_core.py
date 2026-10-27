@@ -22,6 +22,9 @@ from protocol.mesh_protocol import (
     MeshMessage,
     MessageType,
     SosMessage,
+)
+from protocol.compact_sos import CompactSosMessage  # noqa: E402
+from protocol.mesh_protocol import (
     OkNowMessage,
     LowbatMessage,
     HeartbeatMessage,
@@ -259,6 +262,16 @@ class RelayCore:
                 battery=hb.battery,
                 flags=hb.flags,
                 neighbours=hb.neighbours,
+            )
+        elif hdr.msg_type == MessageType.SOS and isinstance(message, CompactSosMessage):
+            # The tag is computed with TTL zeroed, so it survives the hop.
+            forward_msg = CompactSosMessage(
+                header=forward_hdr,
+                grid_x=message.grid_x,
+                grid_y=message.grid_y,
+                battery=message.battery,
+                envelope=message.envelope,
+                auth_tag=message.auth_tag,
             )
         elif hdr.msg_type == MessageType.SOS:
             sos: SosMessage = message  # type: ignore
