@@ -479,7 +479,9 @@ the latency. The model learned the generator, not the task.
 \subsection{The two encoders fail in opposite places}
 
 \begin{table}[htbp]
-\caption{Category accuracy: rules, model, and a cascade between them}
+\caption{Category accuracy on GENERATED text: rules, model, and a cascade
+between them. The cascade column does not hold on real messages; see the
+text below and \S\,V-G.}
 \begin{center}
 \begin{tabular}{lrrr}
 \toprule
@@ -512,6 +514,28 @@ confidence deciding whether to compress; routing on it requires nothing further
 to be trained. The unintelligible stratum is excluded from the overall figure,
 since its gold label is OTHER and both encoders answer OTHER. Unintelligible
 input is still refused 100\% of the time.
+
+\textbf{The cascade does not survive real text, and we did not ship it.}
+Table~\ref{tab:cascade} is measured on generated messages, where the model
+has seen its own generator. Run against the 1{,}524 held-out real messages
+of \S\,V-G the ordering reverses: rules alone recover the category 47.7\%
+of the time and the cascade 37.9\%, a loss of 9.8 points. The routing is not
+at fault --- 78\% of real messages fall below the confidence threshold and
+reach the model, which is what the design intends --- but on exactly those
+messages the rules would still have scored 38.2\% and the model manages
+25.7\%. A model trained on templates does not generalise to Haitian-English
+translation, and the stratified table's promise was an artifact of its own
+test set.
+
+A second objection is structural and would apply even to a model that did
+generalise. The cascade has nowhere to put a refusal. The rules decline to
+compress 98.9\% of non-emergencies; once they have said "unsure" the model
+is asked, and the model has no confidence of its own, so it answers. Every
+enquiry, offer of help and billing question becomes a compressed report
+nobody made. Any future cascade needs a confidence signal on its second
+stage before it can be allowed near the fallback path, and we report this
+as the reason the measured 67.7\% stays in the research code rather than on
+the handset.
 
 \subsection{Why not general-purpose compression}
 
