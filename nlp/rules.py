@@ -44,11 +44,15 @@ CATEGORY_TERMS: Dict[Category, Tuple[str, ...]] = {
         "collapse", "collapsed", "building fell", "wall fell", "roof fell",
         "rubble", "debris", "girr gaya", "gir gayi", "malba", "malbe",
         "chhat gir", "deewar gir", "imarat gir",
+        # from the dev half of the Figure Eight corpus
+        "destroyed", "cracked", "crushed",
     ),
     Category.MEDICAL: (
         "injured", "injury", "bleeding", "unconscious", "heart attack", "fracture",
         "broken leg", "broken arm", "medical", "doctor", "ambulance", "stretcher",
         "ghayal", "chot", "khoon", "behosh", "dawai", "bimar", "saans",
+        # from the dev half of the Figure Eight corpus
+        "wounded", "sick", "hospital", "clinic",
     ),
     Category.FLOOD: (
         "flood", "flooded", "water rising", "drowning", "submerged", "waterlogged",
@@ -61,10 +65,23 @@ CATEGORY_TERMS: Dict[Category, Tuple[str, ...]] = {
     Category.SUPPLIES_NEEDED: (
         "need water", "need food", "no water", "no food", "supplies", "medicine",
         "blanket", "khana", "paani chahiye", "pani chahiye", "bhookh", "dawa chahiye",
+        # Shelter as a thing needed belongs here, not under EVACUATION:
+        # docs/ANNOTATION_GUIDE.md defines SUPPLIES_NEEDED as "food, water,
+        # medicine, shelter needed". With "shelter" under the
+        # higher-priority EVACUATION, "TENT, SHELTER, FOOD AND OTHER
+        # THINGS" was being read as an evacuation.
+        "shelter", "shelter chahiye",
+        # Items people actually ask for, taken from the dev half of the
+        # Figure Eight corpus. "tant"/"tants" are how testers and real
+        # senders misspell tent; "prelate"/"prelat" is the Creole word for
+        # a tarpaulin and appears throughout the Haiti messages.
+        "tent", "tant", "prelate", "prelat", "tarpaulin",
+        "clothing", "clothes", "blankets", "canned", "batteries", "diapers",
+        "hygiene", "hungry", "thirsty", "starving", "nothing to eat",
     ),
     Category.EVACUATION: (
-        "evacuate", "evacuation", "need to leave", "get out", "shelter",
-        "nikalna", "nikalo", "bahar nikal", "shelter chahiye",
+        "evacuate", "evacuation", "need to leave", "get out",
+        "nikalna", "nikalo", "bahar nikal",
     ),
     Category.RESCUE_NEEDED: (
         "rescue", "help us", "save us", "send help", "need help",

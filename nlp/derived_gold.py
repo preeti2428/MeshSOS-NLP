@@ -233,6 +233,13 @@ def main() -> int:
         print(f"  {name:<20}{len(hits):>7}{100*sum(hits)/len(hits):>17.1f}%")
     print("  " + "-" * 45)
     print(f"  {'overall':<20}{n:>7}{100*correct/n:>17.1f}%")
+    print(f"\n  EVACUATION is a weak mapping and is left in deliberately.")
+    print(f"  Their `refugees` label means people already displaced from")
+    print(f"  their homes; our EVACUATION means people leaving or needing")
+    print(f"  to leave. Someone displaced has already left and needs")
+    print(f"  shelter, so the encoder reasonably calls those SUPPLIES.")
+    print(f"  Dropping the row would raise the overall figure, which is")
+    print(f"  precisely why it stays.")
     print(f"  compressed (did not fall back): {100*compressed/n:.1f}%")
 
     # The number that actually matters. Refusing everything scores 100% here

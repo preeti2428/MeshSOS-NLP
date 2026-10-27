@@ -195,24 +195,41 @@ class SemanticEncoder(private val threshold: Float = DEFAULT_THRESHOLD) {
         private val NEGATION_TRAILING = listOf("nahi", "nhi", "mat ", "na hai")
 
         private val CATEGORY_TERMS: Map<Category, List<String>> = mapOf(
-            Category.TRAPPED to listOf("trapped", "stuck", "pinned", "buried", "can't get out",
+            Category.TRAPPED to listOf("trapped", "stuck", "pinned", "buried", "under rubble",
+                "can't get out",
                 "cannot get out", "fansa", "phansa", "fanse", "phanse", "dabba", "dabe",
                 "malbe ke niche", "malbe ke neeche", "atka", "atke"),
             Category.COLLAPSE to listOf("collapse", "collapsed", "building fell", "wall fell",
                 "roof fell", "rubble", "debris", "girr gaya", "gir gayi", "malba", "malbe",
-                "chhat gir", "deewar gir", "imarat gir"),
+                "chhat gir", "deewar gir", "imarat gir",
+                // from the dev half of the Figure Eight corpus
+                "destroyed", "cracked", "crushed"),
             Category.MEDICAL to listOf("injured", "injury", "bleeding", "unconscious", "heart attack",
                 "fracture", "broken leg", "broken arm", "medical", "doctor", "ambulance", "stretcher",
-                "ghayal", "chot", "khoon", "behosh", "dawai", "bimar", "saans"),
+                "ghayal", "chot", "khoon", "behosh", "dawai", "bimar", "saans",
+                // from the dev half of the Figure Eight corpus
+                "wounded", "sick", "hospital", "clinic"),
             Category.FLOOD to listOf("flood", "flooded", "water rising", "drowning", "submerged",
                 "waterlogged", "baadh", "badh", "paani bhar", "pani bhar", "doob", "dub rahe"),
             Category.FIRE to listOf("fire", "burning", "smoke", "flames", "blaze",
                 "aag", "jal raha", "jal rahi", "dhuan", "dhuaan"),
             Category.SUPPLIES_NEEDED to listOf("need water", "need food", "no water", "no food",
                 "supplies", "medicine", "blanket", "khana", "paani chahiye", "pani chahiye",
-                "bhookh", "dawa chahiye"),
+                "bhookh", "dawa chahiye",
+                // Shelter as a thing needed belongs here, not under EVACUATION:
+                // the annotation guide defines SUPPLIES_NEEDED as "food, water,
+                // medicine, shelter needed". With "shelter" under the
+                // higher-priority EVACUATION, "TENT, SHELTER, FOOD AND OTHER
+                // THINGS" was read as an evacuation.
+                "shelter", "shelter chahiye",
+                // Items people actually ask for, from the dev half of the
+                // Figure Eight corpus. "tant"/"tants" is how tent gets
+                // misspelled; "prelate"/"prelat" is Creole for a tarpaulin.
+                "tent", "tant", "prelate", "prelat", "tarpaulin",
+                "clothing", "clothes", "blankets", "canned", "batteries", "diapers",
+                "hygiene", "hungry", "thirsty", "starving", "nothing to eat"),
             Category.EVACUATION to listOf("evacuate", "evacuation", "need to leave", "get out",
-                "shelter", "nikalna", "nikalo", "bahar nikal", "shelter chahiye"),
+                "nikalna", "nikalo", "bahar nikal"),
             Category.RESCUE_NEEDED to listOf("rescue", "help us", "save us", "send help",
                 "need help", "bachao", "madad", "help chahiye", "koi hai"),
         )
