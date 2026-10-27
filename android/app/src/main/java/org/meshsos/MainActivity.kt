@@ -22,6 +22,7 @@ import org.meshsos.crypto.KeyManager
 import org.meshsos.privacy.PrivacyManager
 import org.meshsos.protocol.*
 import org.meshsos.service.MeshForegroundService
+import org.meshsos.transport.BleTransport
 
 /**
  * Main Android Activity for MeshSOS.
@@ -41,6 +42,41 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvPeersCount: TextView
 
     private var activeSosSeq: Int? = null
+
+    // The SOS button turns red the moment it is pressed, whether or not
+    // the radio did anything. This ticker reports what the radio actually
+    // did, so a failure is visible on the handset instead of looking like
+    // a delivery problem somewhere out in the mesh.
+    private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val statusTicker = object : Runnable {
+        override fun run() {
+            refreshRadioStatus()
+            statusHandler.postDelayed(this, 1000L)
+        }
+    }
+
+    private fun refreshRadioStatus() {
+        val st = BleTransport.Status
+        tvPeersCount.text = st.summary(MeshForegroundService.peerCount)
+        tvPeersCount.setTextColor(
+            when {
+                !st.bluetoothOn || !st.advertiserReady -> 0xFFEF4444.toInt()
+                st.lastError != null -> 0xFFF59E0B.toInt()
+                st.sent > 0 -> 0xFF10B981.toInt()
+                else -> 0xFF64748B.toInt()
+            }
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        statusHandler.post(statusTicker)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        statusHandler.removeCallbacks(statusTicker)
+    }
     private lateinit var keyManager: KeyManager
     private lateinit var privacyManager: PrivacyManager
 

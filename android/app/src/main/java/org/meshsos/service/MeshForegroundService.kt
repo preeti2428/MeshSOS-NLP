@@ -160,6 +160,11 @@ class MeshForegroundService : Service() {
     }
 
     companion object {
+        /** Neighbours currently heard, for the activity's status line. */
+        @Volatile
+        @JvmStatic
+        var peerCount: Int = 0
+
         // Compact-SOS grid is relative to this origin; both ends must agree.
         // Configuration, distributed at enrolment, never sent per message.
         const val GRID_ORIGIN_LAT = 28.60
@@ -306,6 +311,7 @@ class MeshForegroundService : Service() {
 
         // 2. Transmit periodic heartbeat if interval elapsed
         val neighbours = transportManager.getAllNeighbours()
+        peerCount = neighbours.size
         val trickleInterval = batteryManager.updateTrickleInterval(neighbours.keys)
 
         if (nowMs - lastHeartbeatMs >= trickleInterval || lastHeartbeatMs == 0L) {

@@ -33,15 +33,80 @@ class BleTransport(
     private var isScanning = false
 
     override fun start() {
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) return
-        advertiser = bluetoothAdapter.bluetoothLeAdvertiser
+        Status.bluetoothOn = bluetoothAdapter != null && bluetoothAdapter.isEnabled
+        if (!Status.bluetoothOn) {
+            Status.advertiserReady = false
+            Status.lastError = null      // not an error, just switched off
+            return
+        }
+        advertiser = bluetoothAdapter!!.bluetoothLeAdvertiser
         scanner = bluetoothAdapter.bluetoothLeScanner
+        Status.advertiserReady = advertiser != null
+        if (advertiser == null) {
+            Status.lastError = "this phone cannot advertise over BLE"
+        }
         startFilteredScanning()
     }
 
     private val advertiseCallback = object : AdvertiseCallback() {
-        override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {}
-        override fun onStartFailure(errorCode: Int) {}
+        override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
+            Status.advertising = true
+            Status.lastError = null
+        }
+
+        override fun onStartFailure(errorCode: Int) {
+            Status.advertising = false
+            // This was an empty method. Every advertising failure -- a
+            // missing Nearby devices permission, an oversized payload, a
+            // radio already in use -- was discarded here, while the UI
+            // went on saying the SOS had been dispatched. On a field test
+            // across ten handsets that is indistinguishable from a
+            // protocol fault.
+            Status.lastError = when (errorCode) {
+                ADVERTISE_FAILED_DATA_TOO_LARGE ->
+                    "payload too large for one advertisement"
+                ADVERTISE_FAILED_TOO_MANY_ADVERTISERS ->
+                    "radio busy: another app is advertising"
+                ADVERTISE_FAILED_ALREADY_STARTED ->
+                    "already advertising"
+                ADVERTISE_FAILED_INTERNAL_ERROR ->
+                    "Bluetooth internal error, toggle Bluetooth off and on"
+                ADVERTISE_FAILED_FEATURE_UNSUPPORTED ->
+                    "this phone cannot advertise over BLE"
+                else -> "advertising failed, code $errorCode"
+            }
+        }
+    }
+
+    /**
+     * What the radio is actually doing, readable from the UI.
+     *
+     * The transport lives inside the foreground service and the activity
+     * cannot reach it, so the few facts a tester needs are kept here.
+     * Nothing in the app's behaviour depends on these fields; they exist
+     * so a failure is visible instead of silent.
+     */
+    object Status {
+        @Volatile var bluetoothOn: Boolean = false
+        @Volatile var advertiserReady: Boolean = false
+        @Volatile var advertising: Boolean = false
+        @Volatile var scanning: Boolean = false
+        @Volatile var lastError: String? = null
+        @Volatile var sent: Int = 0
+        @Volatile var received: Int = 0
+        @Volatile var lastSentBytes: Int = 0
+
+        /** One line for the status badge. */
+        fun summary(peers: Int): String {
+            val err = lastError
+            if (!bluetoothOn) return "Bluetooth is off"
+            if (!advertiserReady) return "This phone cannot advertise over BLE"
+            if (err != null) return "Radio: $err"
+            if (!advertising && sent == 0) return "Radio ready, nothing sent yet"
+            return "Sent $sent · heard $received · $peers peer" +
+                (if (peers == 1) "" else "s") +
+                (if (advertising) " · on air ${lastSentBytes} B" else "")
+        }
     }
 
     override fun stop() {
@@ -52,13 +117,19 @@ class BleTransport(
     }
 
     override fun send(message: MeshMessage, priority: PriorityLevel): Boolean {
-        if (advertiser == null) return false
+        if (advertiser == null) {
+            Status.lastError =
+                if (!Status.bluetoothOn) "Bluetooth is off"
+                else "no BLE advertiser on this phone"
+            return false
+        }
         val bytes = when (message) {
             is org.meshsos.protocol.SosMessage -> message.toCompactBleBytes()
             is org.meshsos.protocol.OkNowMessage -> message.toCompactBleBytes()
             else -> message.toBytes()
         }
         if (bytes.size > 26) {
+            Status.lastError = "message is ${bytes.size} B, one advertisement holds 26"
             return false
         }
 
@@ -82,11 +153,21 @@ class BleTransport(
             .setIncludeTxPowerLevel(false)
             .build()
 
-        try {
+        return try {
             advertiser?.startAdvertising(settings, data, advertiseCallback)
-            return true
+            Status.sent += 1
+            Status.lastSentBytes = bytes.size
+            true
+        } catch (e: SecurityException) {
+            // On Android 12+ this is what a missing BLUETOOTH_ADVERTISE
+            // (Nearby devices) permission looks like.
+            Status.advertising = false
+            Status.lastError = "Nearby devices permission not granted"
+            false
         } catch (e: Exception) {
-            return false
+            Status.advertising = false
+            Status.lastError = "send failed: ${e.javaClass.simpleName}"
+            false
         }
     }
 
@@ -107,6 +188,7 @@ class BleTransport(
         try {
             scanner?.startScan(listOf(filterWithData, emptyFilter), settings, scanCallback)
             isScanning = true
+            Status.scanning = true
         } catch (e: SecurityException) {
             // Lacking BLUETOOTH_SCAN runtime permission
         } catch (e: Exception) {}
@@ -140,6 +222,7 @@ class BleTransport(
             val senderId = message.header.nodeId
             val rssi = result.rssi.toFloat()
             neighboursMap[senderId] = rssi
+            Status.received += 1
             receiveListener?.invoke(message, senderId, rssi)
         } catch (e: Exception) {
             // Corrupt or non-protocol packet
