@@ -5,3 +5,4 @@ __pycache__/
 .venv/
 # NLP / compression artefacts
 figures/*.pdf
+models/*.pkl

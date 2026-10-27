@@ -1,0 +1,61 @@
+{
+  "train_samples": 6000,
+  "train_seconds": 9.2,
+  "synthetic_heldout": {
+    "category": [
+      1.0,
+      0.3742
+    ],
+    "casualty_count": [
+      1.0,
+      0.8817
+    ],
+    "mobility": [
+      1.0,
+      0.7708
+    ],
+    "severity": [
+      0.9967,
+      0.7708
+    ],
+    "hazard_flags": [
+      1.0,
+      0.6483
+    ],
+    "all_fields": [
+      0.9967,
+      0.1033
+    ]
+  },
+  "hand_written": {
+    "category": [
+      0.44,
+      0.92
+    ],
+    "casualty_count": [
+      0.92,
+      1.0
+    ],
+    "mobility": [
+      0.68,
+      0.96
+    ],
+    "severity": [
+      0.76,
+      0.96
+    ],
+    "hazard_flags": [
+      0.68,
+      0.92
+    ],
+    "all_fields": [
+      0.28,
+      0.76
+    ]
+  },
+  "model_fp32_kb": 1434.6,
+  "model_int8_kb": 807.8,
+  "model_ms_per_message": 0.8287,
+  "rules_ms_per_message": 0.0973,
+  "note": "values are [model, rules]. Training data is synthetic; the hand-written set is the out-of-distribution test."
+}

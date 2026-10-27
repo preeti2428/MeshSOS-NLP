@@ -78,6 +78,62 @@ learned model does not exist.
 
 ---
 
+## 3b. A learned encoder, and why it is not the one shipping
+
+HumAID and CrisisBench were not reachable from the build environment
+(`crisisnlp.qcri.org` does not resolve here), so there is no real annotated
+corpus. Instead a template generator (`nlp/synth.py`) produced 6,000
+messages whose field values are known by construction — ground truth, not
+rule output, so the model is not merely imitating the baseline.
+
+A character n-gram TF-IDF model with one logistic-regression head per field
+was trained on it (`nlp/train_model.py`) and tested twice.
+
+**On held-out synthetic data** — same generator, unseen samples:
+
+| Field | Model | Rules |
+|---|---|---|
+| category | 100.0% | 37.4% |
+| casualty_count | 100.0% | 88.2% |
+| mobility | 100.0% | 77.1% |
+| severity | 99.7% | 77.1% |
+| hazard_flags | 100.0% | 64.8% |
+| **all fields** | **99.7%** | **10.3%** |
+
+**On the 25 hand-written messages** — never templated, out of distribution:
+
+| Field | Model | Rules |
+|---|---|---|
+| category | 44.0% | 92.0% |
+| casualty_count | 92.0% | 100.0% |
+| mobility | 68.0% | 96.0% |
+| severity | 76.0% | 96.0% |
+| hazard_flags | 68.0% | 92.0% |
+| **all fields** | **28.0%** | **76.0%** |
+
+The model learned the generator, not the task. It wins by 10x on data that
+looks like its training set and loses by nearly 3x on text that does not.
+
+Cost makes the gap worse:
+
+| | Size | Latency |
+|---|---|---|
+| Model, fp32 | 1,435 KB | 0.83 ms/message |
+| Model, int8 | 808 KB | — |
+| Rules | **0 KB** | **0.10 ms/message** |
+
+**The rules encoder is what ships**, and it is what the Android app uses.
+The learned model is reported because the comparison is the finding: a
+model trained on synthetic data is worse than keyword matching on real
+text, while appearing excellent on its own held-out split. Quoting only the
+synthetic column would have been a false result.
+
+What this does **not** show is that learned encoders are a dead end — only
+that this one, trained on this data, is. That question needs HumAID /
+CrisisBench with annotated envelope fields.
+
+---
+
 ## 4. Network effect
 
 60 trials per cell, pairing seed and message round-robin. TTL 8, 3%
@@ -120,8 +176,9 @@ refusal is the feature.
 
 ## 6. What is not done
 
-- **No learned model.** Only the rule baseline exists. Nothing here shows a
-  neural encoder is needed, or that it would be better.
+- **The learned model is trained on synthetic data** and loses badly to the
+  rule baseline on real text (section 3b). Nothing here shows a learned
+  encoder is better — only that this one is not.
 - **No real dataset.** 25 hand-written messages are a smoke test, not
   evidence. HumAID / CrisisBench with annotated fields is the next step.
 - **No hardware.** Simulated throughout. Nothing has run on a handset, and
