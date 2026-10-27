@@ -117,7 +117,7 @@ message fails 16.7\% of the time where a single-frame message fails 3\%. It
 also occupies the channel longer, and in a dense mesh where every node relays,
 channel occupancy limits how many reports get through.
 
-The question this paper asks is therefore narrower than whether NLP can help
+Fig.~\ref{fig:pipeline} shows the path a report takes. The question this paper asks is therefore narrower than whether NLP can help
 disaster response. It is: \emph{can a complete, authenticated emergency report
 be made to fit in one legacy BLE advertising frame, and what does that buy at
 the network layer?}
@@ -283,10 +283,18 @@ SOS, 200\,B text & 324 & 12 \\
 \end{center}
 \end{table}
 
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/fig_budget.pdf}}
+\caption{Message size against the frame budget. Everything above the dashed
+line fragments; 96 of the 124-byte floor is the public key and signature, so
+compressing text alone cannot cross it.}
+\label{fig:budget}
+\end{figure}
+
 The heartbeat was designed to the budget and fits. The SOS does not, and the
 reason is cryptography rather than content: a 13-byte header, a 15-byte body, a
 32-byte public key and a 64-byte signature give a 124-byte floor.
-\textbf{Compressing text alone moves a typical report from six frames to five.}
+Fig.~\ref{fig:budget} shows this against the budget. \textbf{Compressing text alone moves a typical report from six frames to five.}
 It cannot reach one.
 
 \subsection{Why frame count matters}
@@ -301,6 +309,15 @@ frame carries 10 bytes of PDU overhead plus an inter-frame space. A 25-byte
 message occupies about 0.43\,ms; a 364-byte message across 14 frames occupies
 about 6.1\,ms. In a flooding mesh this difference multiplies across the network
 and raises the chance that two frames overlap at a receiver.
+
+\begin{figure*}[t]
+\centerline{\includegraphics[width=\textwidth]{figures/fig_pipeline.pdf}}
+\caption{The compression path. A report is encoded on the handset into three
+bytes and sent as a 25-byte authenticated frame; the gateway expands it for
+triage. When the encoder's confidence falls below threshold nothing is
+inferred and the original text is sent instead, at six or seven frames.}
+\label{fig:pipeline}
+\end{figure*}
 
 \section{System Design}
 
@@ -446,6 +463,14 @@ code\_mixed     & \textbf{79.9\%} & 50.5\% & 75.8\% \\
 \end{center}
 \end{table}
 
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/fig_cascade.pdf}}
+\caption{The two encoders fail in opposite places. The lexicon wins where it
+has the words; the model wins on wording it has never seen. Routing between
+them on the confidence the rule encoder already emits beats either alone.}
+\label{fig:cascade}
+\end{figure}
+
 Scored per stratum, the model does not simply lose: on out-of-vocabulary
 wording it recovers nearly five times what the lexicon does, because character
 n-grams reach words no keyword list contains. The rule encoder already emits a
@@ -506,6 +531,14 @@ TTL~8, 3\% per-frame loss: \textbf{A} full text, \textbf{B} always compressed,
 \label{tab:network}
 \end{center}
 \end{table}
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/fig_delivery.pdf}}
+\caption{SOS reports reaching a gateway, by condition and network size. The
+margin widens as the mesh loads: compression buys the most where contention
+is highest.}
+\label{fig:delivery}
+\end{figure}
 
 The gain is largest at 200 nodes, where the mesh is most loaded. \textbf{C is
 the shipping configuration and the number to quote}; B assumes the encoder is
