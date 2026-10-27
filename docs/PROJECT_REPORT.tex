@@ -1,0 +1,772 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{mathptmx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+
+\definecolor{ink}{HTML}{1A1A1A}
+\definecolor{good}{HTML}{059669}
+\definecolor{warn}{HTML}{B45309}
+\definecolor{bad}{HTML}{B91C1C}
+\definecolor{soft}{HTML}{F4F3EE}
+
+\newcommand{\done}{\textcolor{good}{\textbf{Done}}}
+\newcommand{\partly}{\textcolor{warn}{\textbf{Partly}}}
+\newcommand{\todo}{\textcolor{bad}{\textbf{Not started}}}
+
+\titleformat{\section}{\Large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{18pt}{8pt}
+
+\pagestyle{fancy}\fancyhf{}
+\rhead{\small MeshSOS --- Project Report}
+\lfoot{\small Generated 27 October 2026}
+\rfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlist[itemize]{itemsep=2pt,topsep=4pt}
+\setlist[enumerate]{itemsep=2pt,topsep=4pt}
+
+\title{\textbf{MeshSOS}\\[4pt]
+\large Semantic Compression for Disaster Mesh Networks\\[10pt]
+\normalsize Complete Project Report --- what is built, what is missing,\\
+and what to do next}
+\author{}
+\date{27 October 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{tcolorbox}[colback=soft,colframe=ink!30,boxrule=0.5pt]
+\textbf{How to read this.} Section 1 explains the project in plain words.
+Sections 2--4 describe what exists today. Sections 5--8 cover the models,
+data and results. Section 9 is the honest list of what is broken or missing
+and how to fix each item. Section 10 is the schedule. If you only read one
+section, read Section 9.
+\end{tcolorbox}
+
+\tableofcontents
+\newpage
+
+%====================================================================
+\section{What this project is}
+
+\subsection{The problem}
+
+When an earthquake or flood hits, mobile towers stop working. People who need
+help cannot call anyone. The phones still work --- they just have no network
+to reach.
+
+Smartphone mesh networking solves this by letting phones talk to each other
+directly over Bluetooth. A message hops from phone to phone until it reaches
+someone who still has internet, who forwards it to a rescue centre.
+
+\subsection{The specific problem we work on}
+
+Bluetooth has a hard limit. In the mode that works on \emph{every} phone ---
+including cheap and old ones, which is what people actually carry in
+disaster-prone areas --- one transmission carries only \textbf{31 bytes}.
+After the mandatory Bluetooth headers, about \textbf{27 bytes} are usable.
+
+Our emergency message does not fit. Measured on our own code:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Message} & \textbf{Size} & \textbf{Transmissions needed} \\
+\midrule
+Heartbeat (``I am alive'') & 25 B & 1 \\
+SOS with no text at all & 124 B & 5 \\
+SOS with a short message & 161 B & 6 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The surprise:} the text is not the problem. An SOS with \emph{zero}
+characters of text is still 124 bytes, because it carries a digital signature
+(64 B) and a public key (32 B). Cryptography is \textbf{96 of those 124 bytes
+--- 77\% of the message}.
+
+This means compressing the text alone takes a message from 6 transmissions to
+5. It can never reach 1.
+
+\subsection{Why splitting a message is bad}
+
+If a message needs 6 transmissions, all 6 must arrive or the message is lost.
+With 3\% loss per transmission:
+
+\begin{itemize}
+\item 1 transmission: fails 3\% of the time
+\item 6 transmissions: fails 16.7\% of the time
+\end{itemize}
+
+It also keeps the radio busy about six times longer, and in a crowded mesh
+where every phone is relaying, that is what limits how many messages get
+through.
+
+\subsection{What we built}
+
+A path that fits a complete, authenticated emergency report into
+\textbf{one} 25-byte transmission:
+
+\begin{enumerate}
+\item The person types what happened, in English or Hindi or both.
+\item The phone reads it and compresses the meaning into \textbf{3 bytes}.
+\item Those 3 bytes go into a 25-byte message with location and a security tag.
+\item If the phone did \emph{not} understand the message, it sends the original
+      text instead --- slower, but nothing is guessed.
+\end{enumerate}
+
+%====================================================================
+\section{Where the project stands today}
+
+\begin{center}
+\begin{longtable}{p{6.3cm} l p{5.5cm}}
+\toprule
+\textbf{Part} & \textbf{Status} & \textbf{Note} \\
+\midrule
+\endhead
+3-byte semantic envelope & \done & Packs and unpacks, tested \\
+Rule-based encoder (English + Hindi) & \done & 0 KB, 0.1 ms per message \\
+Decoder and triage scoring & \done & Replaces the old hardcoded weights \\
+25-byte authenticated message & \done & Fits one frame, tag survives hops \\
+Size-aware mesh simulator & \done & Airtime, fragmentation, collisions \\
+Network evaluation (A/B/C) & \done & 60 trials per cell \\
+Stratified evaluation, 10{,}000 msgs & \done & Five strata \\
+Learned model + cascade & \done & Trained, compared, reported \\
+Compression baselines (gzip etc.) & \done & Answers the obvious objection \\
+Android app with text input & \done & Builds; APK from GitHub Actions \\
+Research paper (IEEE format) & \done & 7 pages, 4 figures \\
+\midrule
+Real human-written test data & \todo & Blocking a good venue \\
+Measurement on a real phone & \todo & One day of work \\
+Confidence intervals on results & \todo & A few hours \\
+Hindi data collection & \todo & No corpus has it \\
+Threat model for the security tag & \todo & One section \\
+Cascade deployed in the app & \todo & Measured, not shipped \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%====================================================================
+\section{The application, explained}
+
+\subsection{Who the actors are}
+
+\begin{itemize}
+\item \textbf{Victim phone} --- someone in trouble sends an SOS.
+\item \textbf{Relay phones} --- ordinary phones nearby that pass the message on.
+      They do this in the background, without anyone touching them.
+\item \textbf{Gateway phone} --- a phone that still has internet. It uploads
+      everything it has heard.
+\item \textbf{Rescuer dashboard} --- a web map that shows where people need help.
+\end{itemize}
+
+\subsection{What the user actually does}
+
+\begin{enumerate}
+\item Opens the app. It is already running in the background, sending a small
+      ``I am alive'' heartbeat every few seconds.
+\item Types what happened --- for example \emph{``3 log malbe me fanse hain,
+      ek behosh''}.
+\item While typing, a line below the box shows what the mesh will actually
+      carry. Green means understood and compressed; orange means not
+      understood, full text will be sent.
+\item Presses SOS. The message goes out over Bluetooth.
+\end{enumerate}
+
+\subsection{Technologies used}
+
+\begin{center}
+\begin{tabular}{p{3.6cm} p{10.5cm}}
+\toprule
+\textbf{Part} & \textbf{Technology} \\
+\midrule
+Phone app & Kotlin, Android SDK 34, minimum Android 8 \\
+Radio & Bluetooth Low Energy, legacy advertising (works on all phones) \\
+Background running & Android Foreground Service with \texttt{connectedDevice} type \\
+On-device NLP & Pure Kotlin rules --- \textbf{no model file, no TensorFlow, no internet} \\
+Security & HMAC-SHA256 truncated to 4 bytes; Ed25519 for the full message \\
+Server & Python, FastAPI, SQLite \\
+Dashboard & HTML + JavaScript + Leaflet maps \\
+Simulator & Python, discrete-event \\
+Research models & scikit-learn (TF-IDF, logistic regression, MLP) \\
+Build & GitHub Actions produces the APK automatically \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{How data flows, step by step}
+
+\begin{enumerate}
+\item \textbf{Text in.} The user types into the app.
+\item \textbf{Encode.} \texttt{SemanticEncoder.kt} reads the text, matches
+      words against its lists, and produces six values plus a confidence score.
+\item \textbf{Decide.} If confidence $\geq 0.45$, compress. Otherwise send the
+      original text.
+\item \textbf{Pack.} \texttt{CompactSos.kt} builds a 25-byte message: header
+      (13) + grid location (4) + battery (1) + envelope (3) + security tag (4).
+\item \textbf{Sign.} An HMAC tag is computed over everything except the hop
+      counter, so the tag still works after the message has travelled.
+\item \textbf{Broadcast.} \texttt{BleTransport.kt} sends it as one Bluetooth
+      advertisement.
+\item \textbf{Relay.} Every phone that hears it checks whether it has seen it
+      before, reduces the hop counter, waits a random moment so phones do not
+      all shout at once, and re-sends.
+\item \textbf{Store and forward.} If nobody is nearby, the phone keeps the
+      message for up to 6 hours and re-sends every 10 seconds.
+\item \textbf{Gateway.} A phone with internet unpacks the 3 bytes back into
+      readable fields and uploads them.
+\item \textbf{Dashboard.} The rescuer sees the location, what happened, how
+      many people, and a triage score --- plus a warning if the encoder was
+      unsure.
+\end{enumerate}
+
+\subsection{What the 3 bytes contain}
+
+\begin{center}
+\begin{tabular}{l r p{7.6cm}}
+\toprule
+\textbf{Field} & \textbf{Bits} & \textbf{Meaning} \\
+\midrule
+Category & 4 & trapped, collapse, medical, fire, flood, evacuation, supplies, rescue, other \\
+Casualty count & 3 & 0--6 people, 7 means ``seven or more'' \\
+Mobility & 2 & unknown / can walk / cannot move / unresponsive \\
+Hazard flags & 6 & fire, water, gas, structural, electrical, chemical \\
+Severity & 2 & unknown / none / minor / serious \\
+Confidence & 3 & how sure the encoder was, 0--7 \\
+Reserved & 4 & for future use \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Confidence is sent \emph{with the data} on purpose, so the rescuer can see
+which parts of a report were guessed.
+
+%====================================================================
+\section{Existing research and where the gaps are}
+
+\subsection{What already exists}
+
+\begin{center}
+\begin{tabular}{p{3.4cm} p{10.6cm}}
+\toprule
+\textbf{Work} & \textbf{What it does, and what it leaves out} \\
+\midrule
+HumAID, CrisisBench & Large labelled sets of disaster tweets. Solved problem.
+They label what a tweet is \emph{about}, not what the emergency is. \\
+\addlinespace
+ResQMesh (SSRN, 2026) & Closest work. On-device classifier in a BLE mesh app.
+It uses the category to \emph{order} messages. Message size never changes. \\
+\addlinespace
+OEPB (IETF draft, 2026) & Specifies authenticated emergency broadcast. Uses a
+256-byte message and explicitly \emph{accepts} splitting on Bluetooth 4.x. \\
+\addlinespace
+RelayZero (blog, 2026) & Proposes the same idea as us, but with no evaluation,
+no radio (a TCP socket), and numbers that contradict each other. \\
+\addlinespace
+Semantic communication & Active field, but assumes a channel with real
+capacity. Nobody targets 27 bytes. \\
+\addlinespace
+CuMAC & Short security tags for small devices, built up over many messages.
+Prior art for our 4-byte tag. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{The gaps we found}
+
+\begin{enumerate}
+\item \textbf{Nobody targets the frame boundary.} Everyone either splits the
+      message or assumes a bigger radio.
+\item \textbf{Nobody measures the network effect.} Prior work reports
+      classifier accuracy or queue latency, not delivery.
+\item \textbf{Nobody confronts the crypto budget.} Because they do not target
+      one frame, they never discover that 77\% of the message is signature.
+\item \textbf{The corpora collect the wrong people.} We sampled 520 tweets
+      from HumAID: 51\% commentary, 18\% news, 17\% retweets. Crisis datasets
+      are written by \emph{observers}; our system carries messages from
+      \emph{participants}.
+\end{enumerate}
+
+\subsection{What is new in our work}
+
+\begin{enumerate}
+\item A complete \textbf{authenticated} report in one 27-byte frame, with every
+      trade stated.
+\item A mesh simulator that actually models message size, and delivery numbers
+      from it.
+\item The measured finding that cryptography, not text, is what breaks the
+      budget.
+\item Two honest negative results: a synthetic-trained model that looks
+      excellent and is not, and a standard corpus that does not match the
+      deployment.
+\end{enumerate}
+
+%====================================================================
+\section{The models}
+
+\subsection{Model 1: the rule encoder (this is what ships)}
+
+No training, no model file, no internet. It works by matching words against
+lists.
+
+\begin{itemize}
+\item \textbf{Lexicons}: lists of words per field, in English and romanised
+      Hindi together --- \texttt{trapped}, \texttt{fansa}, \texttt{malbe ke
+      neeche} all live in the same list.
+\item \textbf{Number extraction}: a digit counts only if a person-word appears
+      within 28 characters after it, so ``4 people trapped'' is read and
+      ``4th floor'' is not.
+\item \textbf{Negation}: English negates \emph{before} (``no injuries''),
+      Hindi negates \emph{after} (``ghayal nahi''). Both sides are checked ---
+      18 characters before, 14 after.
+\item \textbf{Confidence}: starts at (fields recovered)/5, then is reduced if
+      most of the message was not recognised ($\times 0.6$), if the writer
+      sounded unsure ($\times 0.8$), if no category matched ($\times 0.5$), or
+      if the message is very short ($\times 0.7$).
+\end{itemize}
+
+\textbf{Why this matters:} if the encoder cannot read most of a message, its
+confidence goes \emph{down}, not up. It treats its own confusion as a reason
+not to compress.
+
+\subsection{Model 2: the learned encoder (research only, not shipped)}
+
+\begin{center}
+\begin{tabular}{l p{9.5cm}}
+\toprule
+\textbf{Setting} & \textbf{Value and why} \\
+\midrule
+Features & TF-IDF over character n-grams, 2 to 4 characters \\
+Vocabulary size & 4{,}000 (script) / 3{,}000 (notebook) \\
+Weighting & Sublinear term frequency \\
+Classifier (script) & Logistic regression, \texttt{max\_iter}=1000, \texttt{C}=4.0 \\
+Classifier (notebook) & MLP, one hidden layer of 128 units, 30 epochs \\
+Heads & One per field; one binary head per hazard bit \\
+Training size & 6{,}000 generated messages \\
+Training time & 9.2 s (logistic) / 5.8 s (MLP), CPU only \\
+Model size & 1{,}435 KB float32, 808 KB int8 \\
+Speed & 0.83 ms per message \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Why character n-grams, not words:} people spell romanised Hindi
+differently every time --- \emph{paani}, \emph{pani}, \emph{panee}. Character
+pieces survive that; whole words do not.
+
+\subsection{Model 3: the cascade (best result, not yet shipped)}
+
+Run the rules first. If they are confident, use their answer. If not, pass the
+message to the learned model. Nothing extra is trained --- the routing signal
+is the confidence score that already existed.
+
+%====================================================================
+\section{Datasets}
+
+\begin{center}
+\begin{tabular}{p{3.4cm} r p{8.4cm}}
+\toprule
+\textbf{Set} & \textbf{Size} & \textbf{What it is and what it is for} \\
+\midrule
+Hand-written & 25 & Written by us. English and Hindi. A smoke test, not a
+benchmark. \\
+\addlinespace
+Synthetic training & 6{,}000 & Built from templates. Labels are correct by
+construction, not copied from the rule encoder. \\
+\addlinespace
+Stratified test & 10{,}000 & Five groups of 2{,}000: known words, synonyms the
+lexicon lacks, misspellings, code-mixed, and nonsense. \\
+\addlinespace
+HumAID & 76{,}484 & Real tweets, downloaded. \textbf{Not usable as-is} ---
+mostly commentary and news. English only. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The honest position:} there is no real human-written test data in this
+project yet. That is the single biggest weakness.
+
+\subsection{Preprocessing}
+
+Deliberately minimal, because the encoder has to run on a phone in
+milliseconds:
+
+\begin{enumerate}
+\item Unicode normalisation (NFKC) --- makes different ways of writing the
+      same character identical.
+\item Lowercase.
+\item Collapse repeated whitespace.
+\item \textbf{Nothing else.} No stemming, no stopword removal, no spell
+      correction, no tokenisation into words. Matching is done on raw
+      substrings so multi-word phrases like \emph{``malbe ke neeche''} work.
+\end{enumerate}
+
+%====================================================================
+\section{Experimental results}
+
+Everything below was measured on this code and can be reproduced.
+
+\subsection{Message size}
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+ & \textbf{Bytes} & \textbf{Frames} \\
+\midrule
+Full SOS with text & 162--187 & 6--7 \\
+Compact SOS & \textbf{25} & \textbf{1} \\
+Reduction & \multicolumn{2}{r}{\textbf{about 86\%}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Encoder accuracy by group (10{,}000 messages)}
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Group} & \textbf{Category} & \textbf{Count} & \textbf{All fields} & \textbf{Fell back} \\
+\midrule
+Known words      & 79.8\% & 100.0\% & 58.6\% & 16.2\% \\
+Synonyms (unseen) & 8.3\% &  60.3\% &  0.1\% & 97.0\% \\
+Misspellings     & 69.8\% & 100.0\% & 50.9\% & 25.2\% \\
+Code-mixed       & 79.9\% & 100.0\% & 60.4\% & 17.4\% \\
+Nonsense         & ---    & ---     & ---    & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Read the synonyms row.} When the encoder meets words it does not know,
+it almost never gets the answer right --- but it refuses to compress 97\% of
+the time instead of guessing. It fails \emph{slowly}, not \emph{wrongly}.
+
+\subsection{Rules vs learned model vs cascade}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Group} & \textbf{Rules} & \textbf{Model} & \textbf{Cascade} \\
+\midrule
+Known words & 79.8\% & 62.3\% & \textbf{81.2\%} \\
+Synonyms & 8.3\% & \textbf{39.1\%} & 38.8\% \\
+Misspellings & 69.8\% & 61.7\% & \textbf{74.8\%} \\
+Code-mixed & \textbf{79.9\%} & 50.5\% & 75.8\% \\
+\midrule
+\textbf{Overall} & 59.5\% & 53.4\% & \textbf{67.7\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The model scored \textbf{99.7\%} on data from its own generator and
+\textbf{28\%} on hand-written text. It learned the generator, not the task.
+But it beats the rules by five times on unseen wording, so combining them
+beats either.
+
+\subsection{Network delivery}
+
+60 trials per cell, 3\% loss per frame.
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Nodes} & \textbf{Full text} & \textbf{Always compressed} & \textbf{Compressed if sure} & \textbf{Airtime saved} \\
+\midrule
+50  & 80.0\% & 88.3\% & 86.7\% & 15.7\% \\
+100 & 76.7\% & 85.0\% & 80.0\% & 12.0\% \\
+200 & 53.3\% & 60.0\% & 60.0\% & 8.5\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Why not ordinary compression}
+
+\begin{center}
+\begin{tabular}{lrrl}
+\toprule
+\textbf{Method} & \textbf{Average} & \textbf{Worst} & \textbf{Fits 27 B?} \\
+\midrule
+Raw text & 48.2 B & 65 & no \\
+gzip & 65.8 B & 78 & no \\
+LZMA & 105.3 B & 124 & no \\
+zlib with shared dictionary & 11.2 B & 51 & sometimes \\
+Our envelope & \textbf{3.0 B} & \textbf{3} & \textbf{always} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Normal compressors make short messages \emph{bigger}, because their own
+headers cost more than they save.
+
+\subsection{Testing}
+
+27 automated tests pass. One of them fails the build if anyone adds a field
+that pushes the message past 27 bytes.
+
+%====================================================================
+\section{What is incomplete, and how to fix it}
+
+This is the important section. Each item says what is wrong, why it matters,
+and exactly how to fix it.
+
+\subsection{No real human-written test data}
+
+\textbf{Status:} \todo. \textbf{This blocks publication at a good venue.}
+
+\textbf{Why it matters.} Every accuracy number in this project comes from text
+that we or a generator wrote. A reviewer will say the evaluation measures our
+own writing style.
+
+\textbf{How to fix.}
+\begin{enumerate}
+\item Run \texttt{notebooks/MeshSOS\_build\_annotation\_set.ipynb} in Colab.
+      It downloads HumAID and writes two labelling sheets.
+\item \textbf{Filter first.} The notebook now counts how many messages are
+      genuine first-person distress. If that number is small, use the
+      \emph{Disaster Response Messages} corpus instead --- its
+      \texttt{direct} genre is real SMS sent during the Haiti and Chile
+      earthquakes.
+\item Two people label 300--500 messages \textbf{independently}, following
+      \texttt{docs/ANNOTATION\_GUIDE.md}. Not together --- agreement measured
+      after discussion means nothing.
+\item Run \texttt{python nlp/score\_annotations.py A.csv B.csv}. It reports
+      Cohen's kappa per field and lists disagreements.
+\item Settle the disagreements, build \texttt{gold.csv}, then run the same
+      script with \texttt{--evaluate}.
+\end{enumerate}
+
+\textbf{Effort:} 6--8 hours per person, two people.
+
+\subsection{Nothing has run on a real phone}
+
+\textbf{Status:} \todo. \textbf{Second biggest weakness.}
+
+\textbf{Why it matters.} All latency figures are desktop Python. There is no
+battery measurement. For a paper about phones, that is a visible hole.
+
+\textbf{How to fix.}
+\begin{enumerate}
+\item Install the APK (already built by GitHub Actions) on one cheap Android
+      phone, four years old or more.
+\item Add timing around the \texttt{encode()} call --- use
+      \texttt{System.nanoTime()} and log it.
+\item Type 50 messages, record the times, report mean and worst case.
+\item Note the APK size difference with and without the encoder.
+\item If time allows, use Android's Battery Historian for drain over an hour.
+\end{enumerate}
+
+\textbf{Effort:} one day. \textbf{This is the cheapest big improvement.}
+
+\subsection{No confidence intervals on the network results}
+
+\textbf{Status:} \todo.
+
+\textbf{Why it matters.} The 100-node result is $+4.3\%$. With 60 trials and no
+error bars, nobody can tell whether that is real or noise. A reviewer will
+write exactly that.
+
+\textbf{How to fix.} In \texttt{simulator/eval\_compression.py}, record each
+trial's outcome instead of only the total, then report mean $\pm$ 95\%
+confidence interval, and run a two-proportion test between A and C. Add error
+bars to the delivery figure.
+
+\textbf{Effort:} 2--3 hours.
+
+\subsection{The Hindi claim has no Hindi data}
+
+\textbf{Status:} \todo.
+
+\textbf{Why it matters.} The paper claims code-mixed support and reports
+60.4\% on it --- but that is on messages we generated. HumAID is English only.
+No public disaster corpus has Hindi.
+
+\textbf{How to fix.} Give 25--30 classmates a scenario --- \emph{``imagine you
+are trapped after an earthquake; write the message you would send''} --- and
+collect 5 each. That is 150 messages in a day, written by people who are not
+the authors. Describe it in the paper as \emph{elicited}, not collected in the
+wild. Honest and acceptable.
+
+\textbf{Effort:} one day.
+
+\subsection{The security tag is weak and has no threat model}
+
+\textbf{Status:} \partly{} --- the tag works, the analysis does not exist.
+
+\textbf{Why it matters.} A 4-byte tag means a 1-in-4-billion forgery chance
+per attempt. The paper says so but never says who the attacker is or what they
+can do.
+
+\textbf{How to fix.}
+\begin{enumerate}
+\item Write a short threat-model subsection: who the attacker is, what they can
+      send, what they cannot do, and what the gateway does about rate limits.
+\item \textbf{Better:} implement the CuMAC idea. Split a full 16-byte tag into
+      four 4-byte pieces and send a different piece in each re-broadcast. The
+      store-and-forward layer already repeats every 10 seconds for 6 hours, so
+      the repeats are free. The gateway acts on the first frame and reaches
+      full strength over later ones.
+\end{enumerate}
+
+\textbf{Effort:} 2 hours for the section, 2 days for the implementation.
+
+\subsection{The cascade is measured but not deployed}
+
+\textbf{Status:} \partly{}.
+
+\textbf{Why it matters.} The best result in the paper (67.7\%) is not what the
+app does. The app runs rules only.
+
+\textbf{How to fix.} Either ship it --- which means putting a quantised model
+in the APK and adding TensorFlow Lite --- or state clearly in the paper that
+it is an offline result. We currently do the second, which is honest. Shipping
+it is a real engineering job because it adds a model file and a dependency.
+
+\textbf{Effort:} 3--4 days to ship properly.
+
+\subsection{The fallback path is wasteful}
+
+\textbf{Status:} \todo{} --- a known easy improvement.
+
+\textbf{Why it matters.} When the encoder is unsure (23\% of messages), it
+sends raw text --- 162--187 bytes, 6--7 frames. Our own measurements show
+shared-dictionary compression would bring that to about 11 bytes.
+
+\textbf{How to fix.} Build a dictionary from common emergency phrases, ship it
+with the app, and compress the fallback text with \texttt{zlib} using that
+dictionary. Both ends must have the same dictionary.
+
+\textbf{Effort:} one day.
+
+\subsection{The radio model is not validated}
+
+\textbf{Status:} \partly{}.
+
+\textbf{Why it matters.} We wrote the collision and airtime model ourselves. It
+has not been checked against a real measurement or a second simulator.
+
+\textbf{How to fix.} Either compare against a known BLE simulator, or measure
+real airtime on two phones with a sniffer, or state it clearly as a limitation
+(currently done).
+
+\textbf{Effort:} days to weeks. Lowest priority of the list.
+
+\subsection{Old results in \texttt{docs/EVALUATION.md} are single-seed}
+
+\textbf{Status:} \partly{} --- known and documented.
+
+\textbf{Why it matters.} The original 200-node ``0 delivered'' figure came from
+one unlucky random seed. The median across seeds is 6 hops, not 17.
+
+\textbf{How to fix.} Re-run \texttt{simulator/evaluation\_matrix.py} over 25
+seeds and regenerate the file with mean and standard deviation.
+
+\textbf{Effort:} one hour.
+
+%====================================================================
+\section{Roadmap}
+
+\subsection{Week 1 --- make the numbers defensible}
+
+\begin{center}
+\begin{tabular}{p{1.6cm} p{8.4cm} p{3.4cm}}
+\toprule
+\textbf{Day} & \textbf{Task} & \textbf{Output} \\
+\midrule
+1 & Confidence intervals and significance tests on all network results & Updated tables, error bars \\
+1 & Re-run old evaluation over 25 seeds & New \texttt{EVALUATION.md} \\
+2 & Install APK on one old phone; time the encoder; note APK size & Real latency numbers \\
+2 & Write the threat-model subsection & New \S{} in the paper \\
+3--5 & Collect 150 Hindi messages from classmates & First real data \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Weeks 2--3 --- real evaluation data}
+
+\begin{enumerate}
+\item Decide the corpus: HumAID filtered, or Disaster Response Messages
+      \texttt{direct} genre. Read samples from both before choosing.
+\item Build the annotation sheets in Colab.
+\item Two people label 300--500 messages independently.
+\item Score agreement; settle disagreements; build the gold set.
+\item Re-run every experiment against it. The scripts already exist --- only
+      the data changes.
+\end{enumerate}
+
+\subsection{Week 4 --- improvements worth making}
+
+\begin{enumerate}
+\item Compress the fallback path with a shared dictionary.
+\item Implement segmented authentication over the store-and-forward repeats.
+\item Optionally ship the cascade in the app.
+\end{enumerate}
+
+\subsection{Week 5 --- paper}
+
+\begin{enumerate}
+\item Replace every synthetic number with the real one.
+\item Add the hardware measurements.
+\item Add error bars to all figures.
+\item Re-read the Related Work; check whether the FMEC 2026 ResQMesh paper has
+      appeared.
+\item Have someone outside the team read it for clarity.
+\end{enumerate}
+
+\subsection{Honest assessment of where it can go}
+
+\begin{center}
+\begin{tabular}{p{6.4cm} p{3.0cm} p{4.4cm}}
+\toprule
+\textbf{Venue} & \textbf{Today} & \textbf{After the roadmap} \\
+\midrule
+College / university symposium & Strong & Strong \\
+National conference & Good & Strong \\
+IEEE / ACM workshop & Possible & Good \\
+Mid-tier conference & Unlikely & Possible \\
+Top venue (SenSys, MobiCom) & No & Still unlikely \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The two items that move this the most are \textbf{real data} and \textbf{one
+phone measurement}. Everything else is polish.
+
+%====================================================================
+\section{How to run everything}
+
+\begin{verbatim}
+pip install -r requirements.txt
+
+python demo.py                                 # end-to-end walkthrough
+python -m pytest tests/ -q                     # 27 tests
+python simulator/test_phase0_size_aware.py     # size-awareness check
+python nlp/eval_encoders.py 2000               # 10,000-message evaluation
+python nlp/train_model.py                      # the learned model
+python simulator/eval_compression.py 60        # network results
+python simulator/make_figure.py                # delivery chart
+python paper/make_figures.py                   # all paper figures
+python simulator/ttl_vs_size_experiment.py 25  # TTL vs size
+\end{verbatim}
+
+Backend and dashboard: \texttt{./start.sh} or \texttt{docker compose up}.
+
+The Android APK is built automatically by GitHub Actions on every push;
+download it from the workflow run's artifacts.
+
+\vspace{1em}
+\begin{tcolorbox}[colback=soft,colframe=ink!30,boxrule=0.5pt]
+\textbf{One last thing.} Every number in this report came from running the
+code in this repository. If anyone asks where a figure came from, the command
+that produced it is listed above. That is worth more than any single result.
+\end{tcolorbox}
+
+\end{document}
