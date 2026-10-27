@@ -179,6 +179,32 @@ What this does **not** show is that learned encoders are a dead end — only
 that this one, trained on this data, is. That question needs HumAID /
 CrisisBench with annotated envelope fields.
 
+### 3c. Cascade: the two encoders fail in opposite places
+
+Scored per stratum, the comparison is not "the model lost". On the
+out-of-vocabulary column the model wins by roughly five times, because
+character n-grams reach wording no keyword list contains.
+
+So route between them on the confidence the rule encoder already produces:
+rules when confident, model when not. Nothing extra is trained.
+
+| Stratum | Rules | Neural | **Cascade** |
+|---|---|---|---|
+| known_vocab | 79.8% | 62.3% | **81.2%** |
+| **synonyms (OOV)** | 8.3% | 39.1% | **38.8%** |
+| spelling | 69.8% | 61.7% | **74.8%** |
+| code_mixed | **79.9%** | 50.5% | 75.8% |
+| **Overall** | 59.5% | 53.4% | **67.7%** |
+
+Category accuracy, 8,000 messages (the unintelligible stratum is excluded:
+its gold is OTHER and both encoders answer OTHER, which would inflate every
+figure). Unintelligible input is still refused 100% of the time, so the
+safety property does not depend on which encoder answered.
+
+The cascade is not implemented in the shipped app — the Android encoder is
+rules only. It is reported because it is measured, and because it says what
+the next engineering step is.
+
 ---
 
 ## 4. Network effect
