@@ -165,6 +165,15 @@ class MeshForegroundService : Service() {
         @JvmStatic
         var peerCount: Int = 0
 
+        /** SOS messages received from peers, for the status line. */
+        @Volatile
+        @JvmStatic
+        var sosHeard: Int = 0
+
+        @Volatile
+        @JvmStatic
+        var lastSosFrom: Long = 0L
+
         // Compact-SOS grid is relative to this origin; both ends must agree.
         // Configuration, distributed at enrolment, never sent per message.
         const val GRID_ORIGIN_LAT = 28.60
@@ -274,6 +283,27 @@ class MeshForegroundService : Service() {
         val nowMs = System.currentTimeMillis()
         val queued = relayCore.onReceive(message, nowMs, randomFraction = Math.random())
 
+        // Receiving an SOS was entirely invisible: the only notification
+        // this service posts is the static "scanning for peer beacons"
+        // one. On a two-phone test the receiving handset showed nothing
+        // at all, which is indistinguishable from the sender having
+        // failed. Heartbeats stay silent; an SOS does not.
+        if (message is CompactSosMessage || message is SosMessage) {
+            sosHeard += 1
+            lastSosFrom = senderId
+            val what = if (message is CompactSosMessage) {
+                val e = message.envelope
+                "${e.category.name.replace('_', ' ').lowercase()}" +
+                    (if (e.casualtyCount > 0) ", ${e.casualtyCount} people" else "")
+            } else {
+                "full text"
+            }
+            updateNotification(
+                "SOS heard from ${senderId and 0xFFFF}: $what  " +
+                "(${sosHeard} total, ${rssi.toInt()} dBm)"
+            )
+        }
+
         // As soon as a peer message is received via BLE, if this phone has internet, immediately forward to backend!
         if (gatewayManager.checkUplinkAvailable()) {
             gatewayManager.queueForUplink(message)
@@ -363,6 +393,16 @@ class MeshForegroundService : Service() {
             }
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(channel)
+        }
+    }
+
+    private fun updateNotification(text: String) {
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.notify(NOTIFICATION_ID, buildForegroundNotification(text))
+        } catch (e: Exception) {
+            // A notification is a convenience here; never let it take the
+            // service down while it is relaying.
         }
     }
 

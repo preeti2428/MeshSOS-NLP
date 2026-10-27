@@ -57,7 +57,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshRadioStatus() {
         val st = BleTransport.Status
-        tvPeersCount.text = st.summary(MeshForegroundService.peerCount)
+        val sos = MeshForegroundService.sosHeard
+        tvPeersCount.text = st.summary(MeshForegroundService.peerCount) +
+            (if (sos > 0) "  ·  SOS heard: $sos" else "")
         tvPeersCount.setTextColor(
             when {
                 !st.bluetoothOn || !st.advertiserReady -> 0xFFEF4444.toInt()
