@@ -1,8 +1,7 @@
 # Annotation guide — MeshSOS semantic envelope
 
 The messages come from `data/annotated/drm_annotator_A.csv` and `_B.csv`:
-500 real messages sent by people inside the 2010 Haiti earthquake and the
-2010 Pakistan floods, from the Figure Eight *Disaster Response Messages*
+500 real messages sent by people inside the 2010 Haiti earthquake, from the Figure Eight *Disaster Response Messages*
 corpus (`direct` genre). They are short, often ungrammatical, and about a
 third are not emergencies at all — that is what real traffic looks like.
 

@@ -45,9 +45,7 @@ a 27-byte radio frame has to carry.
 
 **Disaster Response Messages (Figure Eight / Appen), `genre == "direct"`.**
 
-These are SMS and web-form messages sent during the 2010 Haiti earthquake,
-the 2010 Pakistan floods and the 2012 storms, by people inside the event,
-translated into English.
+These are SMS and web-form messages sent during the 2010 Haiti earthquake, translated to English.
 
 ```
 we need TENTE, food, everything. .. .. .. .. ...
@@ -59,14 +57,29 @@ please we need water, food and tents, we have 101 children .. please come rescue
 After cleaning (330 translator notes, 44 duplicates, 6 empty or very short
 rows removed) the pool is **10,402** messages.
 
-## Two limitations we state rather than hide
+## Three limitations we state rather than hide
 
 1. **The messages are translations.** They were written in Haitian Creole,
    French or Urdu. The grammar is often broken and some words are
    mistranslated. This is a real limitation of the evaluation, but broken
    grammar is also what a real SOS looks like, so it is not purely a loss.
 
-2. **There is no Hindi.** Every `original` field in the corpus is Latin
+2. **It is essentially one event.** Measured on the data itself:
+
+   | Marker in the message | Share of the 10,782 direct messages |
+   |---|---:|
+   | Haitian place names, Digicel | 10.0% |
+   | Pakistan place names, Urdu/Islamic terms | 0.4% |
+   | Chilean place names | 0.0% |
+   | Has a Creole or French `original` | **94.5%** |
+
+   The wider corpus spans several disasters, but the `direct` genre is
+   overwhelmingly the 2010 Haiti earthquake. Results from it should be
+   read as "real messages from one major earthquake", not "disasters in
+   general". The elicited Hindi set is a second, independent population
+   partly for this reason.
+
+3. **There is no Hindi.** Every `original` field in the corpus is Latin
    script — Creole and French, no Devanagari and no romanised Urdu. The
    code-mixed Hindi claim therefore cannot be tested on any public corpus,
    and is being evaluated on messages elicited from volunteers instead

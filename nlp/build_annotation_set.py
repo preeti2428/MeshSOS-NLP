@@ -3,8 +3,9 @@ Build the real-message annotation set for the MeshSOS semantic envelope.
 
 Corpus: "Multilingual Disaster Response Messages" (Figure Eight / Appen),
 genre == "direct" -- SMS and web-form messages sent BY people inside the
-2010 Haiti earthquake, the 2010 Pakistan floods and the 2012 storms,
-translated to English. Unlike tweet corpora (HumAID, CrisisBench) these
+2010 Haiti earthquake, translated to English. (The corpus as a whole also
+covers other events, but the direct genre is overwhelmingly Haiti: 94% of
+these rows carry a Creole or French original.) Unlike tweet corpora (HumAID, CrisisBench) these
 come from participants asking for help, not observers commenting, which
 is the population a mesh SOS system actually carries.
 
