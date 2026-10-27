@@ -318,8 +318,8 @@ object MeshProtocolDeserializer {
             MessageType.HEARTBEAT -> HeartbeatMessage.unpack(header, buffer)
             // Both SOS layouts share this type code; the version byte separates them.
             MessageType.SOS ->
-                if (header.version == org.meshsos.nlp.CompactSosMessage.VERSION)
-                    org.meshsos.nlp.CompactSosMessage.unpack(header, buffer)
+                if (header.version == CompactSosMessage.VERSION)
+                    CompactSosMessage.unpack(header, buffer)
                 else
                     SosMessage.unpack(header, buffer)
             MessageType.OK_NOW -> OkNowMessage.unpack(header, buffer)

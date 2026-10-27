@@ -196,13 +196,13 @@ class MeshForegroundService : Service() {
             // report fits one 25-byte advertising frame; if it is not, the
             // original text goes out uncompressed rather than a guess.
             val encoded = semanticEncoder.encode(text)
-            val grid = org.meshsos.nlp.CompactSosMessage.latLonToGrid(
+            val grid = org.meshsos.protocol.CompactSosMessage.latLonToGrid(
                 lat.toDouble(), lon.toDouble(), GRID_ORIGIN_LAT, GRID_ORIGIN_LON
             )
             if (encoded.shouldCompress && grid != null) {
-                val compact = org.meshsos.nlp.CompactSosMessage(
+                val compact = org.meshsos.protocol.CompactSosMessage(
                     header = Header(
-                        org.meshsos.nlp.CompactSosMessage.VERSION,
+                        org.meshsos.protocol.CompactSosMessage.VERSION,
                         MessageType.SOS, relayCore.nodeId, seq, 8, nowMs / 1000L
                     ),
                     gridX = grid.first,

@@ -145,13 +145,13 @@ class GatewayManager(
                     val locStr = if (lastLat != null && lastLon != null) ""","lat":$lastLat,"lon":$lastLon""" else ""
                     """{$base,"grid_x":${msg.gridX},"grid_y":${msg.gridY},"battery":${msg.battery},"flags":${msg.flags},"neighbours":$nbrStr$locStr}"""
                 }
-                is org.meshsos.nlp.CompactSosMessage -> {
+                is org.meshsos.protocol.CompactSosMessage -> {
                     // Expand the 3-byte envelope so the dashboard sees the same
                     // fields a full-text SOS would have carried.
                     val lat = org.meshsos.service.MeshForegroundService.GRID_ORIGIN_LAT +
-                        msg.gridX * org.meshsos.nlp.CompactSosMessage.GRID_CELL_DEGREES
+                        msg.gridX * org.meshsos.protocol.CompactSosMessage.GRID_CELL_DEGREES
                     val lon = org.meshsos.service.MeshForegroundService.GRID_ORIGIN_LON +
-                        msg.gridY * org.meshsos.nlp.CompactSosMessage.GRID_CELL_DEGREES
+                        msg.gridY * org.meshsos.protocol.CompactSosMessage.GRID_CELL_DEGREES
                     val e = msg.envelope
                     val hz = e.hazards().joinToString(",") { "\"" + org.meshsos.nlp.Hazard.NAMES.getValue(it) + "\"" }
                     """{$base,"compact":true,"lat":$lat,"lon":$lon,"category":"${e.category.name}","battery":${msg.battery},"casualty_count":${e.casualtyCount},"mobility":"${e.mobility.name}","severity":"${e.severity.name}","hazards":[$hz],"confidence":${e.confidenceFraction()},"text":"${e.describe()}"}"""

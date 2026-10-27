@@ -1,8 +1,9 @@
-package org.meshsos.nlp
+package org.meshsos.protocol
 
-import org.meshsos.protocol.Header
-import org.meshsos.protocol.MeshMessage
-import org.meshsos.protocol.MessageType
+// A sealed class's subclasses must share its package, so this message
+// lives beside MeshMessage rather than with the encoder that fills it.
+import org.meshsos.nlp.ENVELOPE_BYTES
+import org.meshsos.nlp.SemanticEnvelope
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.crypto.Mac

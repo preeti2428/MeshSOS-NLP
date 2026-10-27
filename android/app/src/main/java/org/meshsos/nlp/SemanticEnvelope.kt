@@ -20,7 +20,7 @@ enum class Category(val code: Int) {
     FIRE(5), RESCUE_NEEDED(6), SUPPLIES_NEEDED(7), EVACUATION(8);
 
     companion object {
-        fun fromCode(c: Int) = entries.firstOrNull { it.code == c } ?: OTHER
+        fun fromCode(c: Int) = values().firstOrNull { it.code == c } ?: OTHER
     }
 }
 
@@ -28,7 +28,7 @@ enum class Mobility(val code: Int) {
     UNKNOWN(0), AMBULATORY(1), TRAPPED(2), UNRESPONSIVE(3);
 
     companion object {
-        fun fromCode(c: Int) = entries.firstOrNull { it.code == c } ?: UNKNOWN
+        fun fromCode(c: Int) = values().firstOrNull { it.code == c } ?: UNKNOWN
     }
 }
 
@@ -36,7 +36,7 @@ enum class Severity(val code: Int) {
     UNKNOWN(0), NONE(1), MINOR(2), SERIOUS(3);
 
     companion object {
-        fun fromCode(c: Int) = entries.firstOrNull { it.code == c } ?: UNKNOWN
+        fun fromCode(c: Int) = values().firstOrNull { it.code == c } ?: UNKNOWN
     }
 }
 
@@ -91,7 +91,9 @@ data class SemanticEnvelope(
 
     fun confidenceFraction(): Float = confidence / 7.0f
 
-    fun hazards(): List<Int> = Hazard.NAMES.keys.filter { hazardFlags and it != 0 }
+    // Parentheses are load-bearing: Kotlin's infix `and` binds looser than
+    // `!=`, so `hazardFlags and it != 0` parses as `hazardFlags and (it != 0)`.
+    fun hazards(): List<Int> = Hazard.NAMES.keys.filter { (hazardFlags and it) != 0 }
 
     /** One line for the local status pill, mirroring nlp/decoder.py. */
     fun describe(): String {

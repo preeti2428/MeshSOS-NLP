@@ -17,8 +17,9 @@ class SemanticEncoder(private val threshold: Float = DEFAULT_THRESHOLD) {
         val envelope: SemanticEnvelope,
         val confidence: Float,
         val reasons: List<String>,
+        val threshold: Float = DEFAULT_THRESHOLD,
     ) {
-        val shouldCompress: Boolean get() = confidence >= DEFAULT_THRESHOLD
+        val shouldCompress: Boolean get() = confidence >= threshold
     }
 
     fun encode(raw: String): Result {
@@ -44,6 +45,7 @@ class SemanticEncoder(private val threshold: Float = DEFAULT_THRESHOLD) {
             ),
             confidence = conf,
             reasons = reasons,
+            threshold = threshold,
         )
     }
 
