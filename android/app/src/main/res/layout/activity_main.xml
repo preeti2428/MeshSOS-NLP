@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="#0A0E1A">
+
+    <!-- Top Minimal Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="32dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MeshSOS"
+                android:textColor="#FFFFFF"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.03" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Offline Emergency Mesh"
+                android:textColor="#64748B"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_status_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ACTIVE"
+            android:textColor="#10B981"
+            android:background="@drawable/bg_status_pill"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="10dp" />
+
+        <Button
+            android:id="@+id/btn_server_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:text="CONFIG"
+            android:textColor="#94A3B8"
+            android:backgroundTint="#1E293B"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="0dp" />
+    </LinearLayout>
+
+    <!-- Top Spacer to Center the Action Buttons -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Core Lifesaving Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- Big Hero SOS Button -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_sos"
+            android:layout_width="match_parent"
+            android:layout_height="140dp"
+            android:text="SEND SOS"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:background="@drawable/bg_sos_button"
+            android:elevation="10dp"
+            android:stateListAnimator="@null" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap to broadcast distress to mesh peers &amp; cloud rescuers"
+            android:textColor="#64748B"
+            android:textSize="12sp"
+            android:layout_marginTop="12dp"
+            android:gravity="center" />
+
+        <!-- "I AM SAFE" Button (Appears when SOS is triggered) -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_ok_now"
+            android:layout_width="match_parent"
+            android:layout_height="62dp"
+            android:text="I AM SAFE (CANCEL SOS)"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.03"
+            android:background="@drawable/bg_safe_button"
+            android:elevation="6dp"
+            android:visibility="gone"
+            android:layout_marginTop="20dp"
+            android:stateListAnimator="@null" />
+    </LinearLayout>
+
+    <!-- Bottom Spacer -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.2" />
+
+    <!-- Minimal Bottom Footer -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/tv_peers_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btn_stop_sharing"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Pause Mesh Sharing"
+            android:textColor="#475569"
+            android:background="?android:attr/selectableItemBackground"
+            android:textSize="11sp"
+            android:textAllCaps="false"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+</LinearLayout>
