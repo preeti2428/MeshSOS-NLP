@@ -167,6 +167,100 @@ question, so that number is our form's fault, not the encoder's merit.
 
 ---
 
+## Base papers, their limits, and what we added
+
+Thirteen references; three are the ones a comparison question will be
+about.
+
+### ResQMesh (SSRN 2026) — the closest work
+
+On-device ML in a BLE mesh messenger: ~90 keyword patterns plus an INT8
+Conv1D TensorFlow Lite classifier, 9 categories, 4 urgency tiers,
+macro-F1 0.920 on 405 held-out messages at 0.19–1.97 ms.
+
+**Its limit:** it uses the category to **order** messages in a priority
+queue. The message itself is unchanged. A report too large for one frame
+is still too large after classification, and no payload size, MTU or
+fragmentation behaviour is reported; the latency gain is measured at the
+queue, not over the air.
+
+**Ours:** the category **resizes the payload**, and we measure what that
+does at the network layer.
+
+> **Say this before you are asked.** The full text is behind the SSRN
+> paywall; our description comes from the abstract and metadata. Do not
+> pretend otherwise — a single follow-up question will expose it and the
+> rest of the viva will be spent recovering.
+>
+> *"Sir, ek baat pehle hi bata deti hun — ResQMesh ka full text paywall
+> ke peeche hai, maine abstract aur metadata se kaam kiya. Par mera
+> comparison full text pe depend nahi karta, kyunki fark structural hai.
+> Wo category se messages ko queue me aage lagate hain; mai category se
+> message ka size badalti hun — 161 bytes se 25, 6 frames se 1."*
+>
+> Then the point that settles it:
+>
+> *"Aur maine naapa hai ki prioritisation jo theek NAHI kar sakti wo kya
+> hai. Queue me aage lagane se ye nahi badalta ki 6 me se saare 6
+> fragments pahunchne chahiye. 200 nodes pe, ek frame bनाम saat — +31.8%
+> zyada reports pahunchti hain. Ye fayda size se aata hai,
+> prioritisation se nahi."*
+>
+> If pushed — *"to aapne unka paper padha hi nahi?"* — name exactly what
+> you would check if you had it: their payload size, whether they report
+> MTU or fragmentation, and whether latency was measured at the queue or
+> over the air. Add that if they measured over the air, the related work
+> needs revising. That answer reads as a careful researcher. A bluff
+> reads as a student who did not read.
+
+### OEPB (IETF draft-sharma-oepb-00, 2026)
+
+A specification for authenticated offline emergency broadcast.
+
+**Its limit:** a 256-byte message, 104 bytes of signed overhead alone.
+On BLE 4.x the draft states that the 31-byte advertisement **requires**
+fragmentation and reassembly — it accepts fragmentation as normal.
+
+**Ours:** we asked whether fragmentation can be avoided rather than
+accommodated.
+
+### RelayZero (technical report, 2026)
+
+Proposes the same idea we do: semantic compression for a disaster mesh.
+
+**Its limit:** no evaluation, no radio (tested over a TCP socket), and
+figures that contradict each other.
+
+**Ours:** real BLE constraints, a size-aware simulator, 500 paired
+trials per cell and significance tests.
+
+### The four gaps, and the one that matters
+
+| Gap in the literature | What we did |
+|---|---|
+| Nobody targets the frame boundary | 25 bytes, one frame |
+| Nobody measures the network effect | size-aware simulator, +31.8% at 200 nodes |
+| **Nobody confronts the crypto budget** | **96 of 124 bytes are signature and key** |
+| Corpora collect observers, not participants | measured: 12.3% vs 41.6% first-person appeals |
+
+The third is the one to lead with. Everyone assumed the text was the
+problem. Measured, an SOS with **zero characters of text** is still 124
+bytes, of which 96 are the Ed25519 signature and public key. Compressing
+text alone could never have reached one frame — the security had to
+shrink too. That finding is in no prior paper.
+
+### What we have that the closest work does not
+
+| | ResQMesh (from its abstract) | This work |
+|---|---|---|
+| Payload size | not reported | 161 B → **25 B** |
+| Frames per message | not mentioned | 6 → **1** |
+| Network delivery | not measured | **+31.8%** at 200 nodes, p<0.001 |
+| Real-message evaluation | 405 messages | **3,185** real + **547** Hindi |
+| Crypto budget | — | **96 of 124 bytes** |
+
+---
+
 ## Questions they may push on
 
 **"Model train kiya to use kyun nahi kiya?"**
