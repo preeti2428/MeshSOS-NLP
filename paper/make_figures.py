@@ -88,11 +88,15 @@ def fig_budget():
         ax.text(v + 6, yi, f"{v} B · {frames} frame{'s' if frames > 1 else ''}",
                 va="center", fontsize=6.8, color=INK)
     ax.axvline(27, color=BLUE, lw=1.1, ls="--")
-    ax.text(30, 3.42, "27 B: one legacy\nadvertising frame", fontsize=6.5,
-            color=BLUE, va="top")
+    # Annotate below the bars: at the top it collides with the compact-SOS label.
+    ax.annotate("27 B: one legacy advertising frame",
+                xy=(27, -0.62), xytext=(95, -0.62), fontsize=6.5, color=BLUE,
+                va="center", ha="left",
+                arrowprops=dict(arrowstyle="-", color=BLUE, lw=0.8,
+                                shrinkA=0, shrinkB=2))
     ax.set_yticks(y); ax.set_yticklabels([r[0] for r in rows], color=INK)
     ax.set_xlabel("message size (bytes)", color=INK)
-    ax.set_xlim(0, 400)
+    ax.set_xlim(0, 400); ax.set_ylim(-1.1, 3.6)
     _clean(ax, ygrid=False)
     ax.xaxis.grid(True, color=GRID, linewidth=0.6); ax.set_axisbelow(True)
     fig.tight_layout(pad=0.2)
