@@ -3,6 +3,8 @@ Score two annotators, then evaluate the encoders on real text.
 
     python nlp/score_annotations.py A.csv B.csv            # agreement + disagreements
     python nlp/score_annotations.py gold.csv --evaluate    # encoders on the gold set
+    python nlp/score_annotations.py gold.csv \
+        data/annotated/drm_provenance.csv --crosscheck     # vs Figure Eight's labels
 
 Cohen's kappa is reported per field, not as one number, because the fields
 fail differently: counts are usually easy to agree on and severity is not.
@@ -33,6 +35,15 @@ def read(path: str) -> Dict[str, dict]:
             continue
         out[r["id"]] = r
     return out
+
+
+def message_of(row: dict) -> str:
+    """Sheets built from DRM use `message`; the older HumAID ones used
+    `tweet_text`. Accept either so old sheets still score."""
+    for key in ("message", "tweet_text", "text"):
+        if row.get(key):
+            return row[key]
+    raise KeyError("no message column in this row")
 
 
 def norm(field: str, value: str) -> str:
@@ -126,7 +137,7 @@ def evaluate(gold_path: str) -> int:
                 hazard_flags=flags,
                 severity=Severity[norm("severity", r.get("severity", "")) or "UNKNOWN"],
             ))
-            texts.append(r["tweet_text"])
+            texts.append(message_of(r))
         except (KeyError, ValueError) as e:
             print(f"  row {r.get('id')}: skipped ({e})")
 
@@ -150,8 +161,85 @@ def evaluate(gold_path: str) -> int:
     return 0
 
 
+
+# Our categories mapped onto the Figure Eight labels that should co-occur
+# with them. These labels were made by that project's annotators years
+# before this one, so corroboration here is independent evidence that our
+# annotation guide is being applied sensibly. It is a sanity check, not a
+# ground truth: the Figure Eight scheme is coarser than ours, so perfect
+# agreement is neither expected nor desirable.
+CROSSCHECK = {
+    "MEDICAL":         ("fe_medical_help", "fe_death"),
+    "TRAPPED":         ("fe_search_and_rescue", "fe_buildings"),
+    "COLLAPSE":        ("fe_search_and_rescue", "fe_buildings"),
+    "RESCUE_NEEDED":   ("fe_search_and_rescue", "fe_request"),
+    "FLOOD":           ("fe_floods", "fe_water"),
+    "FIRE":            ("fe_fire",),
+    "SUPPLIES_NEEDED": ("fe_food", "fe_water", "fe_shelter"),
+    "EVACUATION":      ("fe_shelter", "fe_missing_people"),
+}
+
+
+def crosscheck(gold_path: str, prov_path: str) -> int:
+    """Compare our labels against the corpus's own independent human labels."""
+    gold = read(gold_path)
+    with open(prov_path, encoding="utf-8-sig", newline="") as fh:
+        prov = {r["id"]: r for r in csv.DictReader(fh)}
+
+    shared = [i for i in gold if i in prov]
+    if not shared:
+        print("No ids in common between the two files.")
+        return 1
+
+    print("=" * 70)
+    print("CROSS-CHECK AGAINST FIGURE EIGHT'S OWN ANNOTATORS")
+    print("=" * 70)
+    print(f"  {len(shared)} labelled messages matched to provenance\n")
+
+    print(f"  {'our category':<18}{'n':>5}{'corroborated':>14}   supporting labels")
+    print("  " + "-" * 66)
+    for cat, keys in CROSSCHECK.items():
+        ids = [i for i in shared if norm("category", gold[i].get("category", "")) == cat]
+        if not ids:
+            continue
+        hit = sum(1 for i in ids if any(prov[i].get(k) == "1" for k in keys))
+        pct = 100 * hit / len(ids)
+        flag = "" if pct >= 60 else "   <-- look at these"
+        print(f"  {cat:<18}{len(ids):>5}{pct:>13.0f}%   "
+              f"{', '.join(k[3:] for k in keys)}{flag}")
+
+    # The other direction: messages the corpus marked as needing rescue.
+    sar = [i for i in shared if prov[i].get("fe_search_and_rescue") == "1"]
+    if sar:
+        ours = Counter(norm("category", gold[i].get("category", "")) for i in sar)
+        print(f"\n  Figure Eight marked {len(sar)} of these search_and_rescue.")
+        print("  We called them:")
+        for k, v in ours.most_common(6):
+            print(f"    {k or '(blank)':<18}{v:>4}")
+
+    # Messages we skipped should mostly be ones the corpus called unrelated.
+    with open(gold_path, encoding="utf-8-sig", newline="") as fh:
+        skipped = [r["id"] for r in csv.DictReader(fh)
+                   if (r.get("notes") or "").strip().upper().startswith("SKIP")
+                   and r["id"] in prov]
+    if skipped:
+        unrel = sum(1 for i in skipped if prov[i].get("fe_request") != "1")
+        print(f"\n  We marked {len(skipped)} SKIP; {100*unrel/len(skipped):.0f}% of those "
+              f"were not requests in the corpus either.")
+
+    print("\n  A row well under 60% means our guide and theirs disagree about")
+    print("  that category. Read those messages before trusting the number -")
+    print("  it may be our labels, or it may be their coarser scheme.")
+    print("=" * 70)
+    return 0
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--crosscheck" in sys.argv:
+        if len(args) != 2:
+            print(__doc__)
+            return 1
+        return crosscheck(args[0], args[1])
     if "--evaluate" in sys.argv:
         if len(args) != 1:
             print(__doc__)
