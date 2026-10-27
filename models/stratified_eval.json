@@ -1,0 +1,52 @@
+{
+  "per_stratum": 2000,
+  "total": 10000,
+  "rule_ms_per_message": 0.1003,
+  "strata": {
+    "known_vocab": {
+      "n": 2000,
+      "category": 79.8,
+      "casualty_count": 100.0,
+      "mobility": 90.7,
+      "hazard_flags": 83.7,
+      "severity": 85.7,
+      "all_fields": 58.6,
+      "fallback": 16.2
+    },
+    "synonyms": {
+      "n": 2000,
+      "category": 8.3,
+      "casualty_count": 60.3,
+      "mobility": 60.8,
+      "hazard_flags": 31.8,
+      "severity": 48.4,
+      "all_fields": 0.1,
+      "fallback": 97.0
+    },
+    "spelling": {
+      "n": 2000,
+      "category": 69.8,
+      "casualty_count": 100.0,
+      "mobility": 92.4,
+      "hazard_flags": 77.5,
+      "severity": 86.2,
+      "all_fields": 50.9,
+      "fallback": 25.2
+    },
+    "code_mixed": {
+      "n": 2000,
+      "category": 79.9,
+      "casualty_count": 100.0,
+      "mobility": 91.2,
+      "hazard_flags": 85.7,
+      "severity": 84.3,
+      "all_fields": 60.4,
+      "fallback": 17.4
+    },
+    "unintelligible": {
+      "n": 2000,
+      "correct_refusals_pct": 100.0
+    }
+  },
+  "note": "Generated text with labels true by construction. Diagnostic of lexicon coverage, not a benchmark result."
+}

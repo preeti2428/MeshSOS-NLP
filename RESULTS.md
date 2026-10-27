@@ -76,6 +76,53 @@ No training data, no model file, no accelerator. This is the baseline any
 learned model has to beat, and it has not been beaten yet because the
 learned model does not exist.
 
+### 3a. Where the encoder breaks: 10,000 messages, stratified
+
+25 messages cannot show where an encoder fails. This set has 10,000, split
+by how far the wording sits from what the lexicon knows, with labels true
+by construction (`nlp/testset.py`). Still generated text, so read it as a
+coverage diagnostic, not a benchmark score.
+
+| Stratum | Category | Count | Mobility | Hazard | Severity | **All fields** | Fallback |
+|---|---|---|---|---|---|---|---|
+| known_vocab | 79.8% | 100.0% | 90.7% | 83.7% | 85.7% | **58.6%** | 16.2% |
+| **synonyms (OOV)** | **8.3%** | 60.3% | 60.8% | 31.8% | 48.4% | **0.1%** | **97.0%** |
+| spelling | 69.8% | 100.0% | 92.4% | 77.5% | 86.2% | **50.9%** | 25.2% |
+| code_mixed | 79.9% | 100.0% | 91.2% | 85.7% | 84.3% | **60.4%** | 17.4% |
+| unintelligible | — | — | — | — | — | — | **100.0%** |
+
+2,000 messages per stratum, 0.100 ms each, 0 KB model.
+
+Four things this says that a single number cannot:
+
+**The out-of-vocabulary cliff is total, and it is safe.** On synonyms the
+encoder recovers the category 8.3% of the time — barely above nothing. But
+it does not guess: it refuses to compress on **97.0%** of them and sends
+the original text. The failure mode is slower transmission, not a wrong
+report.
+
+**Spelling costs about eight points, not the system.** Real typing
+("pani bhr rha hai", "mai fnsa hu") drops all-fields accuracy from 58.6%
+to 50.9% and raises fallback from 16.2% to 25.2%. Worth fixing with fuzzy
+matching; not a crisis.
+
+**Code-mixed input is not the weak point.** At 60.4% it edges out pure
+known-vocabulary text. Hindi–English mixing was designed for from the
+start, and the lexicons carry both languages together.
+
+**Refusal on unintelligible input is perfect.** 100% of 2,000 gibberish
+messages fell back rather than inventing a category.
+
+Counts are the strongest field (100% where the vocabulary is known) and
+hazards the weakest (83.7%), because hazards co-occur and a message often
+implies one the writer never named.
+
+**The honest reading:** this encoder is a lexicon. It performs where the
+lexicon reaches and refuses where it does not. That is defensible for
+deployment and insufficient as a research result — closing the synonyms
+column is the work that matters, and section 3b explains why a learned
+model is not yet the answer.
+
 ---
 
 ## 3b. A learned encoder, and why it is not the one shipping
