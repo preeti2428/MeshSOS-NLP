@@ -43,8 +43,14 @@ prior work and the two a reviewer is most likely to know.
 and can be regenerated with the commands in `RESULTS.md`, but you will be
 asked where each one came from.
 
-## preview_NOT_ieee_format.pdf
+## meshsos_preview.pdf
 
-A syntax check only, compiled with `article` because IEEEtran was unavailable
-in the build environment. Use it to judge length and content, not layout —
-the real formatting comes from Overleaf.
+A rendering of the same source, compiled here with the `article` class
+dressed to look like IEEEtran: letter paper, two columns, Times 10pt, IEEE
+margins, Roman-numeral small-caps headings. IEEEtran itself is not installed
+in the build environment and CTAN was unreachable, so this is an
+approximation, not the real class.
+
+Good enough to read, circulate and judge length. **Compile on Overleaf for
+anything you submit** — spacing, float placement and the reference style will
+shift slightly, and only IEEEtran output is actually IEEE format.
