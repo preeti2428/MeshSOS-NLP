@@ -437,6 +437,7 @@ source 17 hops from the nearest gateway against a TTL of 8, while the median
 across seeds is 6. All results below average over seeds.
 
 \subsection{Encoder fidelity, stratified}
+\label{sec:fidelity}
 One number over a generated set would report how the generator happened to
 phrase things. We therefore split 10{,}000 messages by how far the wording sits
 from the encoder's lexicon, with labels true by construction.
@@ -563,58 +564,88 @@ compressing the text to nothing leaves five frames against the compact path's
 one.} The bound is the cryptography, not the language.
 
 \subsection{Network effect}
-Three conditions, \textbf{500 paired trials per cell} pairing seed and message
-round-robin, TTL~8, 3\% per-frame loss: \textbf{A} full text, \textbf{B}
-always compressed, \textbf{C} compressed when confident. All three conditions
-see the same topology and the same message in every trial, so the design is
-paired and the arms are compared with an exact McNemar test on the discordant
-trials. Intervals are 95\% Wilson score intervals, which stay inside $[0,1]$
-at the rates observed here where the normal approximation does not.
+Three conditions, \textbf{500 paired trials per cell}, TTL~8, 3\% per-frame
+loss: \textbf{A} full text, \textbf{B} always compressed, \textbf{C}
+compressed when confident. All three see the same topology and the same
+message in every trial, so the design is paired and the arms are compared
+with an exact McNemar test on the discordant trials. Intervals are 95\%
+Wilson score intervals.
+
+We report two message sources, and the difference between them is the most
+useful result in this section. Table~\ref{tab:network} uses our 25
+hand-written samples; Table~\ref{tab:network-real} draws from the held-out
+half of the Figure Eight corpus. The samples state several fields each and
+condition C compresses 72\% of them. Real messages state one thing at a
+time and C compresses 14\%.
 
 \begin{table}[htbp]
-\caption{SOS delivered to a gateway, 500 paired trials per cell}
+\caption{Hand-written samples: the mechanism's ceiling}
 \begin{center}
-\begin{tabular}{lrrrcr}
+\begin{tabular}{lrrrrr}
 \toprule
-\textbf{Nodes} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{95\% CI (C)} & \textbf{Airtime (C)} \\
+\textbf{Nodes} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{B gain} & \textbf{C gain} \\
 \midrule
-50  & 84.6\% & 91.2\% & 88.8\% & [85.7, 91.3] & 13.7\% \\
-100  & 72.8\% & 82.6\% & 79.8\% & [76.1, 83.1] & 10.6\% \\
-200  & 54.8\% & 63.8\% & 61.2\% & [56.9, 65.4] & 7.2\% \\
+50 & 84.6\% & 91.2\% & 88.8\% & +7.8\% & +5.0\% \\
+100 & 72.8\% & 82.6\% & 79.8\% & +13.5\% & +9.6\% \\
+200 & 54.8\% & 63.8\% & 61.2\% & +16.4\% & +11.7\% \\
 \bottomrule
 \end{tabular}
 \label{tab:network}
 \end{center}
 \end{table}
 
+\begin{table}[htbp]
+\caption{Real held-out messages: what a deployment would see}
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Nodes} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{B gain} & \textbf{C gain} \\
+\midrule
+50 & 82.8\% & 91.2\% & 84.4\% & +10.1\% & +1.9\% \\
+100 & 69.6\% & 82.6\% & 71.4\% & +18.7\% & +2.6\% \\
+200 & 48.4\% & 63.8\% & 50.6\% & +31.8\% & +4.5\% \\
+\bottomrule
+\end{tabular}
+\label{tab:network-real}
+\end{center}
+\end{table}
+
 \begin{figure}[htbp]
 \centerline{\includegraphics[width=\columnwidth]{figures/fig_delivery.pdf}}
 \caption{SOS reports reaching a gateway, by condition and network size, with
-95\% Wilson intervals. The margin widens as the mesh loads: compression buys
-the most where contention is highest.}
+95\% Wilson intervals, on the hand-written samples.}
 \label{fig:delivery}
 \end{figure}
 
-Every A-versus-C difference is significant at $p < 0.001$. At 200 nodes the
-paired counts are 34 trials where C delivered and A did not against 2 the
-other way; at 100 nodes, 37 against 2; at 50 nodes, 22 against 1. The relative
-gain grows with load --- $+5.0\%$, $+9.6\%$, $+11.7\%$ at 50, 100 and 200
-nodes --- which is the expected direction if the mechanism is contention
-rather than anything particular to the payload.
+Every A-versus-C difference is significant at $p<0.01$ in both tables, and
+every A-versus-B difference at $p<0.001$. But the two columns of gains tell
+different stories. On real messages \textbf{B grows sharply with load ---
+$+10.1\%$, $+18.7\%$, $+31.8\%$ at 50, 100 and 200 nodes --- while C barely
+moves, at $+1.9\%$, $+2.6\%$ and $+4.5\%$}. The paired counts make the
+reason plain: at 200 nodes B beats C on 69 trials and loses on 3.
 
-An earlier version of this evaluation used 60 trials per cell. At that size
-the 95\% interval on a rate near 0.8 is roughly $\pm 10$ percentage points,
-wide enough to contain every effect reported here, and the apparent ordering
-of the arms moved between runs. The numbers above supersede it.
+\textbf{The bottleneck has moved from the protocol to the language.} One
+frame instead of seven is worth up to a third more delivered reports in a
+loaded mesh, and that is the mechanism this paper set out to build. The
+deployed configuration captures roughly one seventh of it, not because the
+protocol underperforms but because the encoder reaches its confidence
+threshold on 14\% of real messages. Every point of encoder coverage is now
+worth real delivery, and the distance between the two gain columns is a
+measurement of exactly how much: closing it entirely is worth $+31.8\%$ at
+200 nodes.
 
-\textbf{C is the shipping configuration and the number to quote}; B assumes
-the encoder is never unsure, which is false for 28\% of these messages. B
-beats C significantly at every size ($p < 0.002$), and that gap is precisely
-the cost of the fallback --- an honest encoder that refuses to guess gives up
-part of the gain, and we report the part it gives up rather than quoting the
-ceiling. A separate sweep separates TTL-limited from size-limited failure:
-where TTL is too low for the topology, both short and long messages fail and
-compression cannot help.
+We take C rather than B as the shipping configuration anyway. B assumes the
+encoder is never unsure, and Section~\ref{sec:fidelity} shows what it
+produces when it is: on messages whose wording it does not recognise it is
+right 8.3\% of the time. A rescuer acting on an invented report is worse
+than one waiting for a slower true one. The honest reading is that the
+protocol contribution is sound and the encoder is the part that now limits
+it.
+
+An earlier version of this evaluation used 60 trials per cell, where the
+95\% interval on a rate near 0.8 is roughly $\pm10$ percentage points ---
+wide enough to contain every effect reported here. Those numbers are
+superseded.
 
 \section{Discussion}
 
@@ -659,37 +690,61 @@ eliminate the risk.
 
 \section{Limitations}
 
-\textbf{No real evaluation corpus.} Fidelity is measured on generated text and
-25 hand-written messages. Our attempt to use a real corpus found a population
-mismatch (\S\,VI-B). \textbf{No hardware validation.} Everything is simulated;
-the encoder has not run on a handset and no energy measurement exists.
+\textbf{No annotated real corpus.} Category and hazard labels for the real
+messages are derived from Figure Eight's own annotations through a mapping we
+wrote (\S\,V-G); casualty count, mobility and severity have no counterpart
+there and are still measured only on generated and elicited text. Two
+annotators are labelling 500 messages; that set is not yet in these numbers.
+\textbf{One event.} The \texttt{direct} genre is overwhelmingly the 2010
+Haiti earthquake: 94.5\% of those rows carry a Creole or French original.
+Read the results as real messages from one major earthquake, not disasters in
+general. \textbf{The Hindi set is elicited, and our form leaked.} Seven of
+ten scenario questions contained words from the encoder's own lexicon, and
+volunteers echoed them; only the three clean scenarios (29.6\%) are a fair
+estimate. \textbf{No hardware validation.} Everything is simulated; the
+encoder has not run on a handset and no energy measurement exists.
 \textbf{A simplified radio model.} No multipath, capture effect, or
-hardware-specific advertising behaviour. \textbf{Weaker authentication.} The
-4-byte tag is not a digital signature and the shared key in our prototype is a
-placeholder that must not ship. \textbf{Coarser location.} A ${\sim}100$\,m
-cell rather than a GPS pin. \textbf{Enrolment required.} An unenrolled handset
-cannot send a compact SOS. \textbf{Single implementation.} Results have not
-been reproduced against an independent BLE stack.
+hardware-specific advertising behaviour, and the collision model is our own,
+unvalidated against a reference stack or a sniffer trace. \textbf{Weaker
+authentication.} The 4-byte tag is not a digital signature and the single
+group key in our prototype is a placeholder that must not ship (\S\,V-D).
+\textbf{Coarser location.} A ${\sim}100$\,m cell rather than a GPS pin.
+\textbf{Enrolment required.} An unenrolled handset cannot send a compact SOS.
+\textbf{Single implementation.} Results have not been reproduced against an
+independent BLE stack.
 
 \section{Conclusion}
 
 An authenticated emergency report can be made to fit in one legacy BLE
-advertising frame, but not by compressing text alone --- cryptographic overhead
-dominates the message, and reaching 27 bytes required reducing it too. Doing so
-raises the share of reports reaching a gateway from 53.3\% to 60.0\% at 200
-nodes and cuts channel occupancy by 8.5--15.7\%, with a confidence-gated
-fallback that transmits the original text on the 23\% of messages the encoder
-does not understand.
+advertising frame, but not by compressing text alone --- cryptographic
+overhead dominates the message, and reaching 27 bytes required reducing that
+too. On real held-out messages the mechanism is worth a great deal: always
+compressing raises delivery by $+10.1\%$, $+18.7\%$ and $+31.8\%$ at 50, 100
+and 200 nodes, the gain growing with load exactly as a contention argument
+predicts.
 
-The encoder that achieves this is a keyword matcher. A learned model trained on
-synthetic data scored 99.7\% on its own held-out split and 28.0\% on
-hand-written text. But the two fail in opposite places, and a cascade routed on
-a confidence signal that already existed reaches 67.7\% against 59.5\% and
-53.4\% alone. We report both negative results in full because quoting the
-synthetic column would have been a false finding, and because together they say
-what the next step needs: not a better architecture, but emergency text written
-by people in emergencies, with the envelope fields annotated. We looked for it
-and found that the standard corpora collect the other half of the conversation.
+The shipping configuration captures about one seventh of it. Gated on
+confidence, the encoder compresses 14\% of real messages and delivery rises
+by $+1.9\%$, $+2.6\%$ and $+4.5\%$. We keep the gate: on wording it does not
+recognise the encoder is right 8.3\% of the time, and a rescuer sent to an
+invented report is worse off than one waiting for a slower true one. But the
+consequence should be stated plainly rather than buried. \textbf{The
+bottleneck is no longer the protocol; it is the language.} The distance
+between those two columns is a measurement of what better encoding is worth,
+and at 200 nodes it is $+31.8\%$ of delivered reports.
+
+The encoder that achieves this is a keyword matcher. A learned model trained
+on synthetic data scored 99.7\% on its own held-out split and 28.0\% on
+hand-written text; the two fail in opposite places, and a cascade routed on a
+confidence signal that already existed reaches 67.7\% against 59.5\% and
+53.4\% alone. We report both negative results in full, because quoting the
+synthetic column would have been a false finding. Measured against human
+labels on 1{,}524 held-out real messages the deployed encoder recovers the
+category 47.7\% of the time, and 81.9\% of the time on the messages it
+chooses to compress --- it is not often wrong so much as often silent. What
+the next step needs is not a better architecture but emergency text written
+by people in emergencies with the envelope fields annotated, and the standard
+corpora collect the other half of the conversation.
 
 \section*{Artefact Availability}
 All code, measured results and reproduction commands are in the project
