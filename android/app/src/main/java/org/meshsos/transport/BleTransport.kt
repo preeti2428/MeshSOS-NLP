@@ -29,7 +29,14 @@ class BleTransport(
     private var scanner: BluetoothLeScanner? = null
     private var receiveListener: ((MeshMessage, Long, Float) -> Unit)? = null
 
+    // RSSI and the time each neighbour was last heard. Entries used to be
+    // added and never removed, so the peer count only ever rose: a phone
+    // switched off or carried out of range stayed counted until the
+    // service restarted. That makes the count unusable for the one thing
+    // a field tester needs it for -- telling whether the other handset is
+    // reachable right now.
     private val neighboursMap = ConcurrentHashMap<Long, Float>()
+    private val lastHeardMs = ConcurrentHashMap<Long, Long>()
     private var isScanning = false
 
     override fun start() {
@@ -222,6 +229,7 @@ class BleTransport(
             val senderId = message.header.nodeId
             val rssi = result.rssi.toFloat()
             neighboursMap[senderId] = rssi
+            lastHeardMs[senderId] = System.currentTimeMillis()
             Status.received += 1
             receiveListener?.invoke(message, senderId, rssi)
         } catch (e: Exception) {
@@ -229,7 +237,18 @@ class BleTransport(
         }
     }
 
-    override fun getNeighbours(): Map<Long, Float> = neighboursMap
+    override fun getNeighbours(): Map<Long, Float> {
+        // Heartbeats go out every 5 s, so a peer unheard for 30 s has
+        // missed six of them and is treated as gone.
+        val cutoff = System.currentTimeMillis() - NEIGHBOUR_TIMEOUT_MS
+        lastHeardMs.entries.removeIf { it.value < cutoff }
+        neighboursMap.keys.retainAll(lastHeardMs.keys)
+        return neighboursMap
+    }
+
+    companion object {
+        const val NEIGHBOUR_TIMEOUT_MS = 30_000L
+    }
 
     override fun getCapabilities(): Set<String> = setOf("BLE_BROADCAST", "LOW_POWER", "FILTERED_SCAN")
 
