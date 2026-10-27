@@ -1,0 +1,635 @@
+%% MeshSOS --- IEEE conference paper
+%% Compile on Overleaf: New Project -> Upload Project -> this file,
+%% or paste into Overleaf's "IEEE Conference Template". IEEEtran is
+%% preinstalled there. Local pdflatex needs texlive-publishers.
+
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Fitting an Authenticated Emergency Report into One BLE Advertising Frame:
+Semantic Compression for Infrastructure-Free Disaster Mesh Networks}
+
+%% TODO: replace the six placeholder authors with the real names,
+%% departments, institutions, cities and emails.
+\author{
+\IEEEauthorblockN{1\textsuperscript{st} Given Name Surname}
+\IEEEauthorblockA{\textit{dept. name of organization} \\
+\textit{name of organization}\\
+City, Country \\
+email address or ORCID}
+\and
+\IEEEauthorblockN{2\textsuperscript{nd} Given Name Surname}
+\IEEEauthorblockA{\textit{dept. name of organization} \\
+\textit{name of organization}\\
+City, Country \\
+email address or ORCID}
+\and
+\IEEEauthorblockN{3\textsuperscript{rd} Given Name Surname}
+\IEEEauthorblockA{\textit{dept. name of organization} \\
+\textit{name of organization}\\
+City, Country \\
+email address or ORCID}
+\and
+\IEEEauthorblockN{4\textsuperscript{th} Given Name Surname}
+\IEEEauthorblockA{\textit{dept. name of organization} \\
+\textit{name of organization}\\
+City, Country \\
+email address or ORCID}
+\and
+\IEEEauthorblockN{5\textsuperscript{th} Given Name Surname}
+\IEEEauthorblockA{\textit{dept. name of organization} \\
+\textit{name of organization}\\
+City, Country \\
+email address or ORCID}
+\and
+\IEEEauthorblockN{6\textsuperscript{th} Given Name Surname}
+\IEEEauthorblockA{\textit{dept. name of organization} \\
+\textit{name of organization}\\
+City, Country \\
+email address or ORCID}
+}
+
+\maketitle
+
+\begin{abstract}
+When cellular infrastructure fails, smartphone mesh networks can still carry
+distress reports hop by hop over Bluetooth Low Energy. On the handsets most
+common in disaster-prone regions the only universally supported channel is
+legacy BLE advertising, which carries 31 bytes per frame and about 27 after
+the mandatory AD structures. An authenticated emergency report does not fit:
+in our system it occupies 124 bytes before a single character of free text,
+because an Ed25519 public key and signature account for 96 of them. We present
+a semantic compression path that fits a complete authenticated report into one
+frame. Free text is encoded on the handset into a 3-byte envelope carrying
+category, casualty count, mobility, hazard flags, injury severity and the
+encoder's own confidence; the message is then packed into 25 bytes alongside a
+coarse grid location and a 4-byte authentication tag. Reaching that budget
+required reducing cryptographic overhead as well as text, and we state each
+trade explicitly. Below a confidence threshold nothing is compressed and the
+original text is transmitted. We extend a discrete-event mesh simulator to
+model frame-level fragmentation, size-dependent airtime and receiver-side
+collisions, none of which it previously represented. Across 60 trials per
+configuration, compression raises the fraction of reports reaching a gateway
+from 53.3\% to 60.0\% at 200 nodes and cuts channel occupancy by 8.5--15.7\%.
+We also report two negative results: a model trained on synthetic data reaches
+99.7\% on its own held-out split and loses to a keyword baseline on unseen
+text, though a cascade between them reaches 67.7\% against 59.5\% and 53.4\%
+alone; and a sample of 520 tweets from a standard crisis corpus proved 51\%
+commentary and 18\% news reporting, a mismatch of population rather than of
+annotation quality.
+\end{abstract}
+
+\begin{IEEEkeywords}
+disaster communication, BLE mesh, semantic compression, on-device NLP,
+emergency triage, code-mixed text
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Earthquakes, floods and building collapses remove the infrastructure that
+emergency communication depends on. Base stations lose power, backhaul is cut,
+and the handsets that survive have no network to reach. Smartphone mesh
+networking offers a way through: phones relay for one another over short-range
+radio until a message reaches a device that still has connectivity.
+
+The constraint that shapes such a system is not bandwidth in the usual sense.
+It is the advertising frame. BLE connectionless advertising is the only mode
+that works without pairing, without a connection, and on every Android handset
+in the field, including the five-year-old devices that dominate the regions
+where these systems would be deployed. A legacy advertising PDU carries 31
+bytes; after the mandatory Flags structure and a 16-bit Service Data header,
+roughly 27 remain.
+
+Our heartbeat message was engineered to 25 bytes and fits. The SOS message does
+not. Measured on our implementation, an SOS occupies 124 bytes carrying no text
+at all, rising to 162--187 bytes with a short description --- six or seven
+frames. The reason is not the text. An Ed25519 public key (32\,B) and signature
+(64\,B) account for 96 of those 124 bytes, 77\% of the message, before anything
+is said about the emergency.
+
+This matters because fragmentation is not free. A message split across $n$
+frames arrives only if every frame arrives: at 3\% per-frame loss, a six-frame
+message fails 16.7\% of the time where a single-frame message fails 3\%. It
+also occupies the channel longer, and in a dense mesh where every node relays,
+channel occupancy limits how many reports get through.
+
+The question this paper asks is therefore narrower than whether NLP can help
+disaster response. It is: \emph{can a complete, authenticated emergency report
+be made to fit in one legacy BLE advertising frame, and what does that buy at
+the network layer?}
+
+\subsection{Contributions}
+
+\textbf{A semantic envelope sized against a derived budget.} We compress
+free-form emergency text into 3 bytes carrying six fields and fit the complete
+authenticated message into 25. The budget follows from the advertising PDU
+structure rather than being asserted, and reaching it required reducing
+cryptographic overhead as well as text --- a trade prior work has not had to
+confront because it does not target a frame boundary.
+
+\textbf{A size-aware mesh simulator, and network-level results.} We add
+frame-level fragmentation, size-dependent airtime and receiver-side collisions
+to a discrete-event simulator that previously charged every transmission a
+fixed 5\,ms and dropped whole messages with one coin flip, so payload length
+could not affect any outcome. We then measure what compression does to
+delivery, not only to classification accuracy.
+
+\textbf{Negative results reported in full.} A model trained on synthetic data
+outperforms a keyword baseline by nearly ten times on its own held-out split
+and loses to it on hand-written text. Stratifying 10{,}000 messages by distance
+from the lexicon shows the two fail in opposite places, and a cascade between
+them beats either. We also document that a standard crisis corpus does not
+contain the kind of message this system carries.
+
+\section{Related Work}
+
+\subsection{Classification of crisis text}
+Automatic categorisation of disaster-related messages is mature. HumAID
+\cite{humaid} and the consolidated CrisisBench benchmark \cite{crisisbench}
+provide standard splits and transformer baselines for humanitarian category,
+informativeness and priority labelling. Subsequent work has largely refined
+accuracy on these benchmarks rather than altering what is transmitted. We treat
+crisis-text classification as available infrastructure rather than as a
+contribution, and adopt it only as the front end of an encoder whose output is
+a transmission format rather than a label.
+
+\subsection{On-device intelligence in offline mesh networks}
+The closest work is ResQMesh \cite{resqmesh}, which extends an open-source BLE
+mesh messenger with on-device machine learning. Its priority module combines
+roughly ninety keyword patterns with a quantised INT8 Conv1D TensorFlow Lite
+classifier, assigns nine categories and four urgency tiers, and reports a
+composite macro-F1 of 0.920 on 405 held-out messages at 0.19--1.97\,ms.
+Classified messages enter a priority queue so critical traffic preempts other
+traffic at the radio layer.
+
+ResQMesh establishes that useful semantic processing is feasible on commodity
+Android hardware without connectivity, and we build on that premise.
+\textbf{Our work differs in what the classifier is for.} ResQMesh uses the
+inferred category to \emph{order} transmissions; the message itself is
+unchanged, and no payload size, MTU, advertising budget or fragmentation
+behaviour is reported. A message too large for one frame remains too large
+after classification, and the reported latency improvement is measured at the
+queue rather than over the air. We use the inferred semantics to
+\emph{constrain the payload} and evaluate the consequence at the network layer.
+
+\subsection{Semantic communication and extreme compression}
+Semantic communication reframes transmission around conveying meaning rather
+than reconstructing symbols. Recent work examines tiny language models under a
+joint latency--accuracy--size constraint \cite{tlm6g}, and semantic text
+compression evaluated by preserved downstream classification rather than
+reconstruction fidelity \cite{semcomp}. This literature assumes a channel with
+meaningful capacity; to our knowledge none targets a single-digit-byte residual
+budget inside a 31-byte advertising PDU. In the grey literature, RelayZero
+\cite{relayzero} proposes offline edge-AI semantic compression for disaster
+mesh using a locally hosted language model. We note it as concurrent evidence
+of interest and distinguish our contribution: it reports no accuracy, latency
+or reliability measurement, its mesh layer is a local TCP socket rather than a
+radio, its stated 25-byte payload is inconsistent with its own published
+example string, and its encoder is not deployable on the handsets we target.
+
+\subsection{Authenticated offline emergency broadcast}
+The Offline Emergency Peer-to-Peer Broadcast Protocol (OEPB) \cite{oepb}, an
+experimental Internet-Draft, specifies authenticated emergency alerts over
+short-range radios: a 256-byte CBOR datagram with a 40-byte fixed header and an
+optional 64-byte Ed25519 signature. Its existence confirms independently that
+authenticated infrastructure-free emergency broadcast is worth specifying.
+\textbf{Its answer is the one we set out to avoid.} On BLE 4.x, OEPB states
+that the 31-byte advertisement payload requires L2 fragmentation and
+reassembly; its signed overhead alone is 104 bytes, and free text is carried as
+plain UTF-8 under a byte cap with no semantic compression. We ask whether that
+fragmentation can be avoided rather than accommodated.
+
+\subsection{Short authentication tags on constrained links}
+Our 4-byte tag has prior art. Cumulative Message Authentication Codes
+\cite{cumac} address the same tension: a full MAC does not fit, so a 128-bit
+tag is split into segments spread across successive messages, with the receiver
+accumulating strength over time. We adopt the truncated tag without the
+accumulation, and note the omission as the clearest available improvement: our
+store-and-forward layer already re-broadcasts each SOS every ten seconds for up
+to six hours, so the repeated transmissions such a scheme requires are present
+and currently carry an identical tag each time.
+
+\subsection{Inference from absence of signal}
+Post-disaster victim localisation is typically a sensing problem, addressed
+with millimetre-wave radar, UAV-mounted sensors, or passive detection of
+emissions from victims' handsets \cite{victim}. These detect a victim's
+presence. The silence-inference component of the system this work extends
+inverts the premise: participants carry a cooperating application emitting
+periodic heartbeats, and a disaster is inferred from the \emph{correlated
+cessation} of those heartbeats within a spatial cluster, discriminated against
+battery depletion, deliberate shutdown, a single participant walking out of
+range, and whole-network partition.
+
+\subsection{Code-mixed emergency text}
+Our deployment context produces Hindi--English code-mixed input. Pretrained
+resources exist, including L3Cube-HingCorpus and HingBERT \cite{hingbert}, but
+have not to our knowledge been applied to emergency triage under a
+transmission-size constraint.
+
+\section{Background: The Byte Budget}
+
+\subsection{Why legacy advertising}
+Bluetooth~5 extended advertising carries up to 254 bytes per packet and 1{,}650
+via chaining, but requires a Bluetooth 5.0 chipset and OEM driver support.
+Budget and older Android handsets --- precisely those most common in
+disaster-prone regions --- support only legacy advertising. Wi-Fi Direct and
+Nearby Connections offer higher throughput but are likewise not universally
+available and cost substantially more energy. A system whose emergency path
+depends on any of these degrades to nothing on the devices most likely to be
+present. We therefore treat legacy advertising as the floor every message must
+clear, and faster transports as an optimisation when available.
+
+\subsection{Deriving the usable payload}
+
+\begin{table}[htbp]
+\caption{Usable payload of a legacy advertising PDU}
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+\textbf{Element} & \textbf{Bytes} \\
+\midrule
+Advertising PDU payload & 31 \\
+Flags AD structure (\texttt{0x02 0x01 0x06}) & $-3$ \\
+Service Data AD header (length, type, 16-bit UUID) & $-4$ \\
+\midrule
+\textbf{Usable for application data} & \textbf{27} \\
+\bottomrule
+\end{tabular}
+\label{tab:budget}
+\end{center}
+\end{table}
+
+\subsection{What the existing messages cost}
+
+\begin{table}[htbp]
+\caption{Message sizes before compression}
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Message} & \textbf{Bytes} & \textbf{Frames at 27\,B} \\
+\midrule
+Heartbeat & 25 & 1 \\
+SOS, no text & 124 & 5 \\
+SOS, 13\,B text & 137 & 6 \\
+SOS, 37\,B text & 161 & 6 \\
+SOS, 200\,B text & 324 & 12 \\
+\bottomrule
+\end{tabular}
+\label{tab:sizes}
+\end{center}
+\end{table}
+
+The heartbeat was designed to the budget and fits. The SOS does not, and the
+reason is cryptography rather than content: a 13-byte header, a 15-byte body, a
+32-byte public key and a 64-byte signature give a 124-byte floor.
+\textbf{Compressing text alone moves a typical report from six frames to five.}
+It cannot reach one.
+
+\subsection{Why frame count matters}
+\textbf{Compound loss.} A fragmented message arrives only if every fragment
+arrives. With independent per-frame loss $p$ and $n$ frames, delivery
+probability is $(1-p)^n$. At $p = 0.03$, one frame fails 3\% of the time and
+six frames fail 16.7\% --- a $5.6\times$ increase in failure for the same
+report.
+
+\textbf{Channel occupancy.} On the 1M PHY each bit takes 1\,\textmu s, and each
+frame carries 10 bytes of PDU overhead plus an inter-frame space. A 25-byte
+message occupies about 0.43\,ms; a 364-byte message across 14 frames occupies
+about 6.1\,ms. In a flooding mesh this difference multiplies across the network
+and raises the chance that two frames overlap at a receiver.
+
+\section{System Design}
+
+\subsection{The semantic envelope}
+Free text is encoded into 24 bits: category (4), casualty count (3, where 7
+means seven or more), mobility (2), hazard flags (6), severity (2), the
+encoder's own confidence (3), and 4 reserved bits. Confidence travels
+\emph{with the data} deliberately: a rescuer must see how much of a report was
+inferred rather than stated, and the relay layer uses the same value to decide
+whether to compress at all.
+
+\subsection{Reaching 27 bytes}
+Text compression alone is insufficient. Three further reductions were
+necessary, each a trade we state rather than hide. The public key is resolved
+from \texttt{node\_id} at the gateway rather than transmitted ($-32$\,B), so
+only enrolled nodes can send compact messages. The 64-byte Ed25519 signature
+becomes a 4-byte truncated HMAC ($-60$\,B); this is \emph{not} a digital
+signature, it authenticates only to a gateway holding the shared key, and a
+32-bit tag admits a one-in-four-billion forgery per attempt. Float latitude and
+longitude become the ${\sim}100$\,m grid cell the heartbeat already uses
+($-4$\,B), giving rescuers a cell rather than a pin, with ${\sim}11$\,m
+quantisation error observed.
+
+\begin{table}[htbp]
+\caption{The compact SOS message}
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+\textbf{Element} & \textbf{Bytes} \\
+\midrule
+Header (version, type, node id, seq, TTL, timestamp) & 13 \\
+Grid $x$, grid $y$ & 4 \\
+Battery & 1 \\
+Semantic envelope & 3 \\
+Authentication tag & 4 \\
+\midrule
+\textbf{Total} & \textbf{25} \\
+\bottomrule
+\end{tabular}
+\label{tab:compact}
+\end{center}
+\end{table}
+
+\textbf{The tag excludes TTL.} TTL decrements at every hop, so a tag computed
+over the live header would verify only at the originating node. Zeroing it
+means the tag authenticates the report rather than the path it travelled. The
+grid is relative to a deployment origin distributed at enrolment: absolute
+coordinates do not fit, since longitude 77.209 at $0.001^\circ$ resolution is
+77{,}209, past the 32{,}767 ceiling of a signed 16-bit field. Both SOS layouts
+share the message type; the version byte distinguishes them.
+
+\subsection{The encoder}
+The deployed encoder is rule-based: lexicon matching over category, casualty,
+mobility, hazard and severity terms, with numeric extraction that binds a count
+to a nearby person-word so ``4 people trapped'' is read and ``4 floors'' is
+not. Lexicons cover English and romanised Hindi together, since code-mixed
+input is the norm rather than an edge case. Negation is checked on both sides
+of a match, because English negates before the term (``no injuries'') and
+romanised Hindi after it (``\emph{ghayal nahi}''). Confidence combines how many
+of the five fields were recovered with how much of the message the lexicons
+failed to account for: \textbf{a message carrying much the encoder could not
+read lowers confidence rather than raising it}.
+
+\subsection{Fallback}
+Below a confidence threshold of 0.45 the sender transmits the original
+full-text SOS. Nothing is inferred that the encoder did not understand.
+
+\section{Evaluation}
+
+\subsection{Making the simulator size-aware}
+The simulator this work extends could not have measured compression. Every
+transmission was charged a fixed 5\,ms regardless of length, whole messages
+were dropped with a single coin flip, and there was no collision model. We
+verified the consequence: the same 200-node scenario run with an 11-byte and a
+240-byte message produced byte-identical results --- 0 delivered, 2{,}474
+transmissions, 5{,}588 dedupe drops in both. We added airtime derived from
+length, fragmentation above 27 bytes with independent per-frame loss, and
+collisions between frames overlapping at one receiver, each switchable so prior
+behaviour remains reproducible.
+
+\textbf{A note on a prior published figure.} Our earlier evaluation reported 0
+SOS delivered at 200 nodes. That is a single-seed artefact: seed 42 places the
+source 17 hops from the nearest gateway against a TTL of 8, while the median
+across seeds is 6. All results below average over seeds.
+
+\subsection{Encoder fidelity, stratified}
+One number over a generated set would report how the generator happened to
+phrase things. We therefore split 10{,}000 messages by how far the wording sits
+from the encoder's lexicon, with labels true by construction.
+
+\begin{table}[htbp]
+\caption{Rule encoder by stratum (2{,}000 messages each)}
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Stratum} & \textbf{Category} & \textbf{Count} & \textbf{All} & \textbf{Fallback} \\
+\midrule
+known\_vocab      & 79.8\% & 100.0\% & 58.6\% & 16.2\% \\
+synonyms (OOV)    &  8.3\% &  60.3\% &  0.1\% & 97.0\% \\
+spelling          & 69.8\% & 100.0\% & 50.9\% & 25.2\% \\
+code\_mixed       & 79.9\% & 100.0\% & 60.4\% & 17.4\% \\
+unintelligible    & ---    & ---     & ---    & 100.0\% \\
+\bottomrule
+\end{tabular}
+\label{tab:strata}
+\end{center}
+\end{table}
+
+\textbf{The out-of-vocabulary cliff is total, and it is safe.} On synonyms the
+encoder recovers the category 8.3\% of the time, and refuses to compress 97.0\%
+of them. The failure mode is slower transmission, not a wrong report.
+Code-mixed input is not the weak point: at 60.4\% it edges out pure
+known-vocabulary text. Refusal on unintelligible input is perfect across 2{,}000
+messages.
+
+\subsection{A learned encoder}
+The real corpora were unreachable from our environment, so we generated 6{,}000
+messages from templates whose field values are known by construction --- ground
+truth rather than rule output --- and trained a character n-gram TF-IDF model
+with one logistic-regression head per field. It reaches 99.7\% exact-envelope
+accuracy on held-out synthetic data against the rules' 10.3\%, and 28.0\%
+against the rules' 76.0\% on hand-written messages, at 808\,KB and eight times
+the latency. The model learned the generator, not the task.
+
+\subsection{The two encoders fail in opposite places}
+
+\begin{table}[htbp]
+\caption{Category accuracy: rules, model, and a cascade between them}
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Stratum} & \textbf{Rules} & \textbf{Neural} & \textbf{Cascade} \\
+\midrule
+known\_vocab    & 79.8\% & 62.3\% & \textbf{81.2\%} \\
+synonyms (OOV)  &  8.3\% & \textbf{39.1\%} & 38.8\% \\
+spelling        & 69.8\% & 61.7\% & \textbf{74.8\%} \\
+code\_mixed     & \textbf{79.9\%} & 50.5\% & 75.8\% \\
+\midrule
+\textbf{Overall} & 59.5\% & 53.4\% & \textbf{67.7\%} \\
+\bottomrule
+\end{tabular}
+\label{tab:cascade}
+\end{center}
+\end{table}
+
+Scored per stratum, the model does not simply lose: on out-of-vocabulary
+wording it recovers nearly five times what the lexicon does, because character
+n-grams reach words no keyword list contains. The rule encoder already emits a
+confidence deciding whether to compress; routing on it requires nothing further
+to be trained. The unintelligible stratum is excluded from the overall figure,
+since its gold label is OTHER and both encoders answer OTHER. Unintelligible
+input is still refused 100\% of the time.
+
+\subsection{Why not general-purpose compression}
+
+\begin{table}[htbp]
+\caption{Compressing the text instead of encoding it}
+\begin{center}
+\begin{tabular}{lrrl}
+\toprule
+\textbf{Method} & \textbf{Mean\,B} & \textbf{Max} & \textbf{Fits 27\,B?} \\
+\midrule
+Raw UTF-8                 &  48.2 &  65 & no \\
+zlib (level 9)            &  53.8 &  66 & no \\
+gzip (level 9)            &  65.8 &  78 & no \\
+bzip2                     &  77.0 &  92 & no \\
+LZMA                      & 105.3 & 124 & no \\
+zlib + shared dictionary  &  11.2 &  51 & sometimes \\
+Semantic envelope         & \textbf{3.0} & \textbf{3} & \textbf{always} \\
+\bottomrule
+\end{tabular}
+\label{tab:compress}
+\end{center}
+\end{table}
+
+General-purpose compressors \emph{enlarge} messages this short: their headers
+exceed what they save. The serious competitor is zlib with a shared dictionary,
+which averages 11.2 bytes and is lossless. We distinguish it on three grounds.
+Its output is variable --- up to 51 bytes here --- and a frame budget is a
+bound, not an average. It yields bytes rather than fields, so the dashboard
+must still parse text to rank by urgency. And it requires the dictionary to
+stay synchronised: a mismatch destroys the message rather than degrading it. It
+is, however, strictly better than the raw text our fallback path sends, and
+compressing that path would shrink the 23\% of messages taking it.
+
+\subsection{Network effect}
+Three conditions, 60 trials per cell pairing seed and message round-robin,
+TTL~8, 3\% per-frame loss: \textbf{A} full text, \textbf{B} always compressed,
+\textbf{C} compressed when confident.
+
+\begin{table}[htbp]
+\caption{SOS delivered to a gateway}
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Nodes} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{Airtime saved (C)} \\
+\midrule
+50  & 80.0\% & 88.3\% & 86.7\% & 15.7\% \\
+100 & 76.7\% & 85.0\% & 80.0\% & 12.0\% \\
+200 & 53.3\% & 60.0\% & 60.0\% &  8.5\% \\
+\bottomrule
+\end{tabular}
+\label{tab:network}
+\end{center}
+\end{table}
+
+The gain is largest at 200 nodes, where the mesh is most loaded. \textbf{C is
+the shipping configuration and the number to quote}; B assumes the encoder is
+never unsure, which is false 23\% of the time. A separate sweep separates
+TTL-limited from size-limited failure: where TTL is too low for the topology,
+both short and long messages fail and compression cannot help.
+
+\section{Discussion}
+
+\subsection{What the negative result means}
+Template-generated text teaches a model the template. On its own split that
+model looks close to perfect; on text written by a person it collapses below a
+keyword matcher. Crisis-NLP systems are frequently evaluated on held-out splits
+of the corpus they were trained on, and where that corpus is narrow the
+reported accuracy may say more about the corpus than the system. Our result is
+an extreme case because our corpus is synthetic, but the direction of the error
+is the same one a single-event benchmark would produce.
+
+\subsection{Available corpora collect the wrong half of the conversation}
+We attempted to replace generated text with real data and did not succeed.
+HumAID \cite{humaid} supplies 76{,}484 annotated tweets from 19 disasters. We
+drew 520, weighted toward the classes most likely to contain an emergency, and
+classified what we had: 51\% commentary, 18\% news reporting, 17\% retweets,
+1\% donation appeals. The 13\% matching first-person patterns were largely
+expressions of sympathy rather than requests for help.
+
+This is not a defect in HumAID. It is a mismatch of population. Crisis corpora
+are collected from public social media, where the people writing are
+overwhelmingly \emph{observers}. A mesh system of this kind carries messages
+from \emph{participants}. The two differ in length, register, person, and the
+presence of hashtags and audience, and the labels of the first describe
+information type rather than emergency type. The Figure Eight \emph{Disaster
+Response Messages} corpus \cite{drm} carries a \texttt{direct} genre of
+messages and SMS sent during the 2010 Haiti and Chile earthquakes, a closer
+population, though translated and smaller.
+
+\subsection{The safety case}
+A compression error here is not a metric: reading ``two children trapped'' as
+``one adult trapped'' sends the wrong team. Three bits of the envelope carry
+how certain the encoder was, so a rescuer's display can mark an inferred report
+as inferred. A message where the lexicons account for little of the text scores
+\emph{lower}, not higher --- the encoder treats its own incomprehension as
+evidence against compressing. Below threshold the original text is transmitted
+at the cost of more frames, a deliberate exchange of reliability for fidelity
+in the direction that fails safe. A regression test asserts that casualty
+counts are never reported lower than ground truth. We make no claim that these
+eliminate the risk.
+
+\section{Limitations}
+
+\textbf{No real evaluation corpus.} Fidelity is measured on generated text and
+25 hand-written messages. Our attempt to use a real corpus found a population
+mismatch (\S\,VI-B). \textbf{No hardware validation.} Everything is simulated;
+the encoder has not run on a handset and no energy measurement exists.
+\textbf{A simplified radio model.} No multipath, capture effect, or
+hardware-specific advertising behaviour. \textbf{Weaker authentication.} The
+4-byte tag is not a digital signature and the shared key in our prototype is a
+placeholder that must not ship. \textbf{Coarser location.} A ${\sim}100$\,m
+cell rather than a GPS pin. \textbf{Enrolment required.} An unenrolled handset
+cannot send a compact SOS. \textbf{Single implementation.} Results have not
+been reproduced against an independent BLE stack.
+
+\section{Conclusion}
+
+An authenticated emergency report can be made to fit in one legacy BLE
+advertising frame, but not by compressing text alone --- cryptographic overhead
+dominates the message, and reaching 27 bytes required reducing it too. Doing so
+raises the share of reports reaching a gateway from 53.3\% to 60.0\% at 200
+nodes and cuts channel occupancy by 8.5--15.7\%, with a confidence-gated
+fallback that transmits the original text on the 23\% of messages the encoder
+does not understand.
+
+The encoder that achieves this is a keyword matcher. A learned model trained on
+synthetic data scored 99.7\% on its own held-out split and 28.0\% on
+hand-written text. But the two fail in opposite places, and a cascade routed on
+a confidence signal that already existed reaches 67.7\% against 59.5\% and
+53.4\% alone. We report both negative results in full because quoting the
+synthetic column would have been a false finding, and because together they say
+what the next step needs: not a better architecture, but emergency text written
+by people in emergencies, with the envelope fields annotated. We looked for it
+and found that the standard corpora collect the other half of the conversation.
+
+\section*{Artefact Availability}
+All code, measured results and reproduction commands are in the project
+repository.
+
+\begin{thebibliography}{00}
+\bibitem{humaid} F. Alam, U. Qazi, M. Imran, and F. Ofli, ``HumAID:
+Human-annotated disaster incidents data from Twitter with deep learning
+benchmarks,'' in \emph{Proc. ICWSM}, 2021.
+\bibitem{crisisbench} F. Alam, H. Sajjad, M. Imran, and F. Ofli,
+``CrisisBench: Benchmarking crisis-related social media datasets for
+humanitarian information processing,'' \emph{arXiv:2004.06774}, 2020.
+\bibitem{resqmesh} O. Pliekhov, ``AI-driven message prioritization for offline
+BLE mesh networks in disaster response scenarios,'' SSRN preprint,
+doi:10.2139/ssrn.6428398, 2026.
+\bibitem{tlm6g} ``Bridging the semantic gap in 6G: Tiny language models under
+the latency--accuracy--size trilemma,'' preprint, 2026.
+\bibitem{semcomp} ``Semantic text compression for classification,'' preprint,
+2023.
+\bibitem{relayzero} ``RelayZero: Offline edge-AI semantic compression for
+disaster mesh networks,'' online technical report, Oct. 2026.
+\bibitem{oepb} K. Sharma, ``Offline Emergency Peer-to-Peer Broadcast Protocol
+(OEPB),'' Internet-Draft draft-sharma-oepb-00, experimental, Jun. 2026.
+\bibitem{cumac} ``Cumulative message authentication codes for
+resource-constrained IoT networks,'' \emph{arXiv:2001.05211}, 2020.
+\bibitem{drm} Figure Eight / Appen, ``Disaster Response Messages,'' dataset.
+\bibitem{victim} ``Victim detection and localization in emergencies,''
+\emph{Sensors}, vol.~22, no.~21, p.~8433, 2022.
+\bibitem{hingbert} R. Nayak and R. Joshi, ``L3Cube-HingCorpus and HingBERT: A
+code mixed Hindi-English dataset and BERT language models,''
+\emph{arXiv:2204.08398}, 2022.
+\bibitem{btspec} Bluetooth SIG, \emph{Bluetooth Core Specification}, Generic
+Access Profile, AD structure definitions.
+\bibitem{androidble} Android Developers, ``Bluetooth Low Energy scanning and
+background execution limits.''
+\end{thebibliography}
+
+\end{document}
