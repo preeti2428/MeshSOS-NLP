@@ -6,3 +6,7 @@ __pycache__/
 # NLP / compression artefacts
 figures/*.pdf
 models/*.pkl
+
+# ...but the human annotations are the valuable part - keep them
+!data/annotated/
+!data/annotated/**
