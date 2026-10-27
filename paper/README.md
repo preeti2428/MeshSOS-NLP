@@ -23,15 +23,6 @@ package via `tlmgr`.
 reads left to right, then down, and that is the sequence used in citations
 and indexing.
 
-**Cite the team's other paper.** *ResQTrail: Lifecycle-Aware SOS
-Dissemination over Smartphone Mesh Networks for Flood Rescue* is a separate
-paper by the same authors on a related system. Two papers from one group on
-smartphone mesh SOS that do not reference each other invites a duplicate-
-submission question, and the answer is a one-line citation. The systems
-differ in transport — ResQTrail uses Google Nearby Connections, this work
-targets raw legacy BLE advertising — and saying so in a sentence turns an
-awkward overlap into a clear division of scope.
-
 **Add Figure 1.** `figures/fig1_delivery.pdf` is the delivery chart. Insert it
 in §V-F with:
 
