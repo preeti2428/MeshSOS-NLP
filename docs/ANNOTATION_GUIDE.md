@@ -1,5 +1,15 @@
 # Annotation guide — MeshSOS semantic envelope
 
+The messages come from `data/annotated/drm_annotator_A.csv` and `_B.csv`:
+500 real messages sent by people inside the 2010 Haiti earthquake and the
+2010 Pakistan floods, from the Figure Eight *Disaster Response Messages*
+corpus (`direct` genre). They are short, often ungrammatical, and about a
+third are not emergencies at all — that is what real traffic looks like.
+
+**Do not open `drm_provenance.csv`.** It records which half of the sample
+each message came from and what the corpus's own annotators labelled it.
+Seeing either would bias you.
+
 Two people label the same messages independently, then disagreements are
 discussed and settled. Agreement is reported as Cohen's kappa per field.
 **Do not label together.** Agreement measured after discussion means nothing.
@@ -81,10 +91,30 @@ Write them comma-separated, e.g. `WATER,STRUCTURAL`. None → leave blank.
 
 ## Hard cases, decided in advance
 
-**Retweets and news reports.** HumAID contains many. If the message reports
-*about* an event rather than *from* it ("Death toll rises to 233"), it is
-still labelled — the encoder will see such text — but note `THIRD_PARTY` in
-`notes` so these can be analysed separately.
+**Offers of help.** About one message in twenty offers aid rather than asking
+for it — "I can provide hot meals, baby supplies, let me know what you need".
+These are not emergency reports. → `SKIP`, and write `OFFER` in `notes`.
+
+**Requests for information.** "I need information about the earthquake",
+"I would like to know if it is safe to sleep inside" — a real person in the
+disaster, but no emergency is being reported. → `SKIP`, note `INFO_REQUEST`.
+These are a large share of real traffic and the encoder must fall back on
+them rather than invent a category.
+
+**Service and billing messages.** "Digicel please fix my phone", questions
+about SMS rates. → `SKIP`, note `OFF_TOPIC`.
+
+**Third-party reports.** If the message reports *about* an event rather than
+*from* it ("Death toll rises to 233"), label it — the encoder will see such
+text — but note `THIRD_PARTY` so these can be analysed separately.
+
+**Translated text.** These messages were written in Haitian Creole, French
+or Urdu and translated to English, so the grammar is often broken and some
+words are mistranslated. Label what the message plainly means. If it is
+genuinely unreadable → `SKIP`, note `UNREADABLE`.
+
+**Place names.** Delmas, Carrefour, Jacmel, Port-de-Paix and similar are
+Haitian locations, not hazards or categories. They carry no label.
 
 **Mixed messages.** "No food, and water is rising" — water is the more urgent
 emergency, so `FLOOD`, and `SUPPLIES_NEEDED` is lost. That loss is real and
@@ -103,7 +133,9 @@ field blank hoping the other annotator fills it.
 ## After labelling
 
 ```bash
-python nlp/score_annotations.py data/annotated/annotator_A.csv data/annotated/annotator_B.csv
+python nlp/score_annotations.py \
+    data/annotated/drm_annotator_A.csv \
+    data/annotated/drm_annotator_B.csv
 ```
 
 It prints Cohen's kappa per field and writes the disagreements to a file to

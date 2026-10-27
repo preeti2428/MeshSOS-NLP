@@ -10,3 +10,5 @@ models/*.pkl
 # ...but the human annotations are the valuable part - keep them
 !data/annotated/
 !data/annotated/**
+data/raw/
+data/hindi/form_responses.csv
