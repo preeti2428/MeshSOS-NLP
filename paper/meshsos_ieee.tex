@@ -515,18 +515,19 @@ input is still refused 100\% of the time.
 \subsection{Why not general-purpose compression}
 
 \begin{table}[htbp]
-\caption{Compressing the text instead of encoding it}
+\caption{Compressing the text instead of encoding it. Methods are scored on
+3{,}120 held-out real messages; the shared dictionary is built from a disjoint
+7{,}278-message training split. \emph{Fits} asks whether the resulting SOS
+occupies one frame: for the first three it never can, because 124 bytes of
+header and cryptography precede the text.}
 \begin{center}
 \begin{tabular}{lrrl}
 \toprule
 \textbf{Method} & \textbf{Mean\,B} & \textbf{Max} & \textbf{Fits 27\,B?} \\
 \midrule
-Raw UTF-8                 &  48.2 &  65 & no \\
-zlib (level 9)            &  53.8 &  66 & no \\
-gzip (level 9)            &  65.8 &  78 & no \\
-bzip2                     &  77.0 &  92 & no \\
-LZMA                      & 105.3 & 124 & no \\
-zlib + shared dictionary  &  11.2 &  51 & sometimes \\
+Raw UTF-8                 &  91.7 & 585 & no \\
+zlib (level 9)            &  75.2 & 341 & no \\
+zlib + shared dictionary  &  59.3 & 326 & no \\
 Semantic envelope         & \textbf{3.0} & \textbf{3} & \textbf{always} \\
 \bottomrule
 \end{tabular}
@@ -535,14 +536,31 @@ Semantic envelope         & \textbf{3.0} & \textbf{3} & \textbf{always} \\
 \end{table}
 
 General-purpose compressors \emph{enlarge} messages this short: their headers
-exceed what they save. The serious competitor is zlib with a shared dictionary,
-which averages 11.2 bytes and is lossless. We distinguish it on three grounds.
-Its output is variable --- up to 51 bytes here --- and a frame budget is a
-bound, not an average. It yields bytes rather than fields, so the dashboard
-must still parse text to rank by urgency. And it requires the dictionary to
-stay synchronised: a mismatch destroys the message rather than degrading it. It
-is, however, strictly better than the raw text our fallback path sends, and
-compressing that path would shrink the 23\% of messages taking it.
+exceed what they save. The serious competitor is zlib with a shared
+dictionary, which is lossless and genuinely helps --- on held-out real
+messages it cuts the text to 65\% of raw. We distinguish it on three grounds.
+Its output is variable, and a frame budget is a bound rather than an average.
+It yields bytes rather than fields, so the dashboard must still parse text to
+rank by urgency. And it requires the dictionary to stay synchronised: a
+mismatch destroys the message rather than degrading it.
+
+\textbf{A correction.} An earlier draft of this table reported 11.2 bytes for
+the shared dictionary, measured on 25 hand-written messages. That figure does
+not survive a held-out split. Rebuilding the dictionary from a disjoint
+training corpus gives 36.9 bytes on those same 25 messages and 59.3 bytes
+across 3{,}120 held-out real ones. A dictionary that contains the evaluation
+text makes each message a literal substring of it, and zlib then emits little
+more than a back-reference: we measure 4.6 bytes in that condition. Any
+shared-dictionary figure in the single digits should be read as a split that
+leaked, including ours.
+
+The correction does not change the conclusion, and sharpens it. Compressing
+the fallback text from 91.7 to 59.3 bytes moves a full SOS from 8.46 to 7.26
+advertising frames --- a real 14\% saving we intend to ship --- but the fixed
+part of that message is 124 bytes, five frames, before a single character of
+text, of which 96 bytes are the signature and public key. \emph{Even
+compressing the text to nothing leaves five frames against the compact path's
+one.} The bound is the cryptography, not the language.
 
 \subsection{Network effect}
 Three conditions, \textbf{500 paired trials per cell} pairing seed and message
