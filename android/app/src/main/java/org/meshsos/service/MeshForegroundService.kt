@@ -160,11 +160,26 @@ class MeshForegroundService : Service() {
     }
 
     companion object {
+        // Compact-SOS grid is relative to this origin; both ends must agree.
+        // Configuration, distributed at enrolment, never sent per message.
+        const val GRID_ORIGIN_LAT = 28.60
+        const val GRID_ORIGIN_LON = 77.20
+
         const val ACTION_SEND_SOS = "org.meshsos.ACTION_SEND_SOS"
         const val ACTION_SEND_OK_NOW = "org.meshsos.ACTION_SEND_OK_NOW"
     }
 
     private var lastHeartbeatMs: Long = 0L
+    private val semanticEncoder = org.meshsos.nlp.SemanticEncoder()
+
+    /**
+     * Shared key for the compact SOS auth tag.
+     *
+     * A per-deployment key provisioned at enrolment belongs here. This
+     * placeholder keeps the demo self-contained and MUST NOT ship: anyone
+     * with the APK can forge a tag.
+     */
+    private fun gatewaySharedKey(): ByteArray = "meshsos-gateway-key".toByteArray()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
@@ -176,6 +191,34 @@ class MeshForegroundService : Service() {
             val lon = intent.getFloatExtra("lon", currLon.toFloat())
             val seq = intent.getIntExtra("sos_seq", nextSeq())
             val nowMs = System.currentTimeMillis()
+
+            // Compress on-device first. If the encoder is confident the whole
+            // report fits one 25-byte advertising frame; if it is not, the
+            // original text goes out uncompressed rather than a guess.
+            val encoded = semanticEncoder.encode(text)
+            val grid = org.meshsos.nlp.CompactSosMessage.latLonToGrid(
+                lat.toDouble(), lon.toDouble(), GRID_ORIGIN_LAT, GRID_ORIGIN_LON
+            )
+            if (encoded.shouldCompress && grid != null) {
+                val compact = org.meshsos.nlp.CompactSosMessage(
+                    header = Header(
+                        org.meshsos.nlp.CompactSosMessage.VERSION,
+                        MessageType.SOS, relayCore.nodeId, seq, 8, nowMs / 1000L
+                    ),
+                    gridX = grid.first,
+                    gridY = grid.second,
+                    battery = batteryManager.getBatteryPercent(),
+                    envelope = encoded.envelope,
+                )
+                compact.sign(gatewaySharedKey())
+                transportManager.send(compact, PriorityLevel.SOS)
+                if (gatewayManager.checkUplinkAvailable()) {
+                    gatewayManager.queueForUplink(compact)
+                    scheduler.execute { flushGateway() }
+                }
+                return START_STICKY
+            }
+
             val dummyPub = ByteArray(32) { 0x42 }
             val sos = SosMessage(
                 header = Header(1, MessageType.SOS, relayCore.nodeId, seq, 8, nowMs / 1000L),

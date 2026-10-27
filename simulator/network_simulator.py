@@ -382,7 +382,7 @@ class NetworkSimulator:
         Send a CompactSosMessage: the semantic envelope in a single 25-byte
         advertising frame, authenticated with a truncated HMAC.
         """
-        from protocol.compact_sos import CompactSosMessage
+        from protocol.compact_sos import COMPACT_SOS_VERSION, CompactSosMessage
 
         node = self.nodes.get(node_id)
         if not node or not node.is_alive:
@@ -391,7 +391,7 @@ class NetworkSimulator:
         # The simulator works in metres; one grid cell is 100 m, matching the
         # resolution the heartbeat already reports.
         msg = CompactSosMessage(
-            header=Header(1, MessageType.SOS, node.node_id, node.next_seq(), ttl, int(self.current_time)),
+            header=Header(COMPACT_SOS_VERSION, MessageType.SOS, node.node_id, node.next_seq(), ttl, int(self.current_time)),
             grid_x=int(node.x // 100),
             grid_y=int(node.y // 100),
             battery=int(max(0, min(100, node.battery))),

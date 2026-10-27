@@ -52,6 +52,9 @@ from protocol.mesh_protocol import HEADER_SIZE, Header, MessageType
 
 BODY_FORMAT = ">hhB"                      # grid_x, grid_y, battery
 BODY_SIZE = struct.calcsize(BODY_FORMAT)  # 5
+# The full SosMessage shares message type SOS, so the version byte is what
+# tells the two layouts apart on the wire.
+COMPACT_SOS_VERSION = 2
 AUTH_TAG_BYTES = 4
 COMPACT_SOS_SIZE = HEADER_SIZE + BODY_SIZE + ENVELOPE_BYTES + AUTH_TAG_BYTES  # 25
 

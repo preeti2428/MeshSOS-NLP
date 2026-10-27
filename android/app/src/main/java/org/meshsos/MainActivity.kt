@@ -32,6 +32,9 @@ import org.meshsos.service.MeshForegroundService
 class MainActivity : AppCompatActivity() {
 
     private lateinit var btnSos: Button
+    private lateinit var etSosText: android.widget.EditText
+    private lateinit var tvEncoderPreview: android.widget.TextView
+    private val encoder = org.meshsos.nlp.SemanticEncoder()
     private lateinit var btnOkNow: Button
     private lateinit var btnStopSharing: Button
     private lateinit var tvStatusBadge: TextView
@@ -49,6 +52,14 @@ class MainActivity : AppCompatActivity() {
         privacyManager = PrivacyManager(this)
 
         btnSos = findViewById(R.id.btn_sos)
+        etSosText = findViewById(R.id.et_sos_text)
+        tvEncoderPreview = findViewById(R.id.tv_encoder_preview)
+        // Show what the mesh would actually carry, as the user types.
+        etSosText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) = updateEncoderPreview()
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
         btnOkNow = findViewById(R.id.btn_ok_now)
         btnStopSharing = findViewById(R.id.btn_stop_sharing)
         tvStatusBadge = findViewById(R.id.tv_status_badge)
@@ -140,7 +151,7 @@ class MainActivity : AppCompatActivity() {
     private fun sendSosIntent(seq: Int, lat: Float, lon: Float) {
         val intent = Intent(this, MeshForegroundService::class.java).apply {
             action = MeshForegroundService.ACTION_SEND_SOS
-            putExtra("sos_text", "EMERGENCY DISTRESS CALL FROM DEVICE")
+            putExtra("sos_text", etSosText.text.toString().ifBlank { "EMERGENCY DISTRESS CALL FROM DEVICE" })
             putExtra("sos_seq", seq)
             if (lat != 0.0f || lon != 0.0f) {
                 putExtra("lat", lat)
@@ -269,5 +280,26 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /**
+     * Live preview of the compression decision.
+     *
+     * The point is that the user can see when the encoder does NOT understand
+     * them, before they press SOS - not after a rescuer acts on a guess.
+     */
+    private fun updateEncoderPreview() {
+        val raw = etSosText.text.toString()
+        if (raw.isBlank()) {
+            tvEncoderPreview.text = ""
+            return
+        }
+        val r = encoder.encode(raw)
+        tvEncoderPreview.text = if (r.shouldCompress) {
+            "25 B, 1 packet  ·  ${r.envelope.describe()}  ·  confidence ${(r.confidence * 100).toInt()}%"
+        } else {
+            "Not understood - full text will be sent (slower, nothing lost)"
+        }
+        tvEncoderPreview.setTextColor(if (r.shouldCompress) 0xFF10B981.toInt() else 0xFFF59E0B.toInt())
     }
 }

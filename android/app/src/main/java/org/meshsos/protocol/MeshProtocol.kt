@@ -316,7 +316,12 @@ object MeshProtocolDeserializer {
         val header = Header.unpack(buffer)
         return when (header.type) {
             MessageType.HEARTBEAT -> HeartbeatMessage.unpack(header, buffer)
-            MessageType.SOS -> SosMessage.unpack(header, buffer)
+            // Both SOS layouts share this type code; the version byte separates them.
+            MessageType.SOS ->
+                if (header.version == org.meshsos.nlp.CompactSosMessage.VERSION)
+                    org.meshsos.nlp.CompactSosMessage.unpack(header, buffer)
+                else
+                    SosMessage.unpack(header, buffer)
             MessageType.OK_NOW -> OkNowMessage.unpack(header, buffer)
             MessageType.LOWBAT -> LowbatMessage.unpack(header, buffer)
             MessageType.ACK -> AckMessage.unpack(header, buffer)

@@ -78,6 +78,34 @@
         android:orientation="vertical"
         android:gravity="center_horizontal">
 
+        <!-- What happened. Compressed on-device into 3 bytes. -->
+        <EditText
+            android:id="@+id/et_sos_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minLines="2"
+            android:maxLines="4"
+            android:gravity="top|start"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_status_pill"
+            android:hint="What happened? e.g. 3 log malbe me fanse hain, ek behosh"
+            android:textColorHint="#64748B"
+            android:textColor="#E2E8F0"
+            android:textSize="14sp"
+            android:inputType="textMultiLine|textCapSentences"
+            android:importantForAutofill="no"
+            android:autofillHints="" />
+
+        <TextView
+            android:id="@+id/tv_encoder_preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text=""
+            android:textColor="#64748B"
+            android:textSize="11sp" />
+
         <!-- Big Hero SOS Button -->
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_sos"

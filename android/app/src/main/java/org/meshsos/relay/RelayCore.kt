@@ -190,6 +190,8 @@ class RelayCore(val nodeId: Long, val config: RelayCoreConfig = RelayCoreConfig(
 
         val forwardMsg: MeshMessage = when (message) {
             is HeartbeatMessage -> message.copy(header = forwardHeader)
+            // The auth tag is computed with TTL zeroed, so it survives the hop.
+            is org.meshsos.nlp.CompactSosMessage -> message.copy(header = forwardHeader)
             is SosMessage -> message.copy(header = forwardHeader)
             is OkNowMessage -> message.copy(header = forwardHeader)
             is LowbatMessage -> message.copy(header = forwardHeader)
